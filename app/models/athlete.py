@@ -1,7 +1,11 @@
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Optional
 
 from sqlmodel import Field, SQLModel
+
+
+def utc_now() -> datetime:
+    return datetime.now(UTC)
 
 
 class Athlete(SQLModel, table=True):
@@ -21,4 +25,5 @@ class Athlete(SQLModel, table=True):
     token_expires_at: Optional[int] = None
 
     last_sync_at: Optional[datetime] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=utc_now)
+    updated_at: datetime = Field(default_factory=utc_now)

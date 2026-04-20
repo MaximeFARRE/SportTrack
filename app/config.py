@@ -7,6 +7,10 @@ class Settings(BaseSettings):
     debug: bool = True
 
     database_url: str = "sqlite:///./sporttrack.db"
+    strava_client_id: str = ""
+    strava_client_secret: str = ""
+    strava_redirect_uri: str = "http://127.0.0.1:8000/athletes/strava/callback"
+    strava_scope: str = "read,activity:read_all"
 
     model_config = SettingsConfigDict(
         env_file=".env",

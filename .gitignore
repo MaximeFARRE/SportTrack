@@ -1,0 +1,20 @@
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Test cache
+.pytest_cache/
+
+# Virtual environments
+.venv/
+venv/
+
+# Local environment files
+.env.local
+
+# SQLite artifacts
+*.db-journal
+
+# OS/editor artifacts
+.DS_Store
+Thumbs.db

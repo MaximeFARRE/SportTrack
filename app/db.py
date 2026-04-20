@@ -4,7 +4,16 @@ from app.config import settings
 
 # Important :
 # on importe les modèles pour que SQLModel les connaisse
-from app.models import User, Athlete, Activity  # noqa: F401
+from app.models import (  # noqa: F401
+    User,
+    Athlete,
+    Activity,
+    Group,
+    GroupMember,
+    DailyMetric,
+    WeeklyMetric,
+    Goal,
+)
 
 
 engine = create_engine(

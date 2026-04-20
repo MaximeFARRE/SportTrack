@@ -1,10 +1,19 @@
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Optional
 
+from sqlalchemy import UniqueConstraint
 from sqlmodel import Field, SQLModel
 
 
+def utc_now() -> datetime:
+    return datetime.now(UTC)
+
+
 class Activity(SQLModel, table=True):
+    __table_args__ = (
+        UniqueConstraint("athlete_id", "provider_activity_id", name="uq_activity_athlete_provider_id"),
+    )
+
     id: Optional[int] = Field(default=None, primary_key=True)
 
     athlete_id: int = Field(foreign_key="athlete.id", index=True)
@@ -36,5 +45,5 @@ class Activity(SQLModel, table=True):
 
     raw_data_json: Optional[str] = None
 
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=utc_now)
+    updated_at: datetime = Field(default_factory=utc_now)
