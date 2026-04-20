@@ -85,8 +85,8 @@ def list_athletes(user_id: int) -> list[dict[str, Any]]:
     return request_json("GET", "/athletes", params={"user_id": user_id})
 
 
-def connect_strava_url(user_id: int) -> str:
-    payload = request_json("GET", "/athletes/connect-strava", params={"user_id": user_id})
+def connect_strava_url() -> str:
+    payload = request_json("GET", "/athletes/connect-strava")
     return payload["authorization_url"]
 
 
@@ -141,6 +141,7 @@ def import_strava_history(athlete_id: int, per_page: int = 100, max_pages: int =
         "POST",
         f"/sync/athletes/{athlete_id}/strava/history",
         params={"per_page": per_page, "max_pages": max_pages},
+        timeout=180,
     )
 
 

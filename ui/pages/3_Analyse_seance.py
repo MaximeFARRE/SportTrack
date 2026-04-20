@@ -21,7 +21,7 @@ if not athletes:
     st.stop()
 
 athlete_map = {
-    f"athlete_id={a['id']} ({a.get('firstname') or ''} {a.get('lastname') or ''})": a["id"]
+    (f"{a.get('firstname') or ''} {a.get('lastname') or ''}".strip() or f"Athlete #{a['id']}"): a["id"]
     for a in athletes
 }
 athlete_label = st.selectbox("Athlete", list(athlete_map.keys()))

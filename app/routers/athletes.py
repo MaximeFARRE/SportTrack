@@ -1,9 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import RedirectResponse
 from sqlmodel import Session
 
+from app.config import settings
 from app.db import get_session
-from app.schemas.athlete import AthleteRead, StravaCallbackResponse, StravaConnectResponse
-from app.services.auth_service import get_user_by_id
+from app.schemas.athlete import AthleteRead, StravaConnectResponse
+from app.services.auth_service import get_or_create_user_for_strava, get_user_by_id
 from app.services.strava_service import (
     build_strava_authorization_url,
     exchange_code_for_token,
@@ -28,57 +30,42 @@ def read_athletes_for_user(
 
 
 @router.get("/connect-strava", response_model=StravaConnectResponse)
-def connect_strava(
-    user_id: int = Query(..., description="Identifiant utilisateur."),
-    state: str | None = Query(default=None),
-    session: Session = Depends(get_session),
-) -> StravaConnectResponse:
-    user = get_user_by_id(session=session, user_id=user_id)
-    if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Utilisateur introuvable.")
-
-    oauth_state = state or f"user:{user_id}"
-
+def connect_strava(session: Session = Depends(get_session)) -> StravaConnectResponse:
     try:
-        authorization_url = build_strava_authorization_url(state=oauth_state)
+        authorization_url = build_strava_authorization_url(state="strava_login")
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
     return StravaConnectResponse(authorization_url=authorization_url)
 
 
-@router.get("/strava/callback", response_model=StravaCallbackResponse)
+@router.get("/strava/callback")
 def strava_callback(
-    user_id: int | None = Query(default=None, description="Identifiant utilisateur."),
     code: str = Query(..., description="Code OAuth renvoye par Strava."),
-    state: str | None = Query(default=None, description="State OAuth Strava."),
+    state: str | None = Query(default=None),
     session: Session = Depends(get_session),
-) -> StravaCallbackResponse:
-    resolved_user_id = user_id
-    if resolved_user_id is None and state:
-        if state.startswith("user:"):
-            try:
-                resolved_user_id = int(state.split(":", 1)[1])
-            except ValueError:
-                resolved_user_id = None
-
-    if resolved_user_id is None:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="user_id manquant (query ou state OAuth).",
-        )
-
-    user = get_user_by_id(session=session, user_id=resolved_user_id)
-    if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Utilisateur introuvable.")
-
+) -> RedirectResponse:
     try:
         token_payload = exchange_code_for_token(code=code)
-        athlete = upsert_strava_athlete(session=session, user_id=resolved_user_id, token_payload=token_payload)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
-    return StravaCallbackResponse(
-        message="Connexion Strava reussie.",
-        athlete=AthleteRead.model_validate(athlete),
+    athlete_payload = token_payload.get("athlete") or {}
+    strava_athlete_id = str(athlete_payload.get("id", ""))
+    if not strava_athlete_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Impossible de recuperer l'identifiant Strava de l'athlete.",
+        )
+
+    user = get_or_create_user_for_strava(
+        session=session,
+        strava_athlete_id=strava_athlete_id,
+        firstname=athlete_payload.get("firstname"),
+        lastname=athlete_payload.get("lastname"),
     )
+
+    upsert_strava_athlete(session=session, user_id=user.id, token_payload=token_payload)
+
+    redirect_url = f"{settings.streamlit_url}/?strava_user_id={user.id}"
+    return RedirectResponse(url=redirect_url)

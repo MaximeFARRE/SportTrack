@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     strava_client_secret: str = ""
     strava_redirect_uri: str = "http://127.0.0.1:8000/athletes/strava/callback"
     strava_scope: str = "read,activity:read_all"
+    streamlit_url: str = "http://localhost:8501"
 
     model_config = SettingsConfigDict(
         env_file=".env",

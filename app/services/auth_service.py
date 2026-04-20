@@ -4,6 +4,7 @@ from typing import Optional
 
 from sqlmodel import Session, select
 
+from app.models.athlete import Athlete
 from app.models.user import User
 from app.schemas.user import UserCreate
 
@@ -65,6 +66,42 @@ def update_user_display_name(session: Session, user_id: int, display_name: str) 
 
     user.display_name = display_name.strip()
     user.updated_at = datetime.now(UTC)
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+    return user
+
+
+def get_or_create_user_for_strava(
+    session: Session,
+    strava_athlete_id: str,
+    firstname: str | None,
+    lastname: str | None,
+) -> User:
+    existing_athlete = session.exec(
+        select(Athlete)
+        .where(Athlete.provider == "strava")
+        .where(Athlete.provider_athlete_id == strava_athlete_id)
+    ).first()
+
+    if existing_athlete:
+        user = get_user_by_id(session=session, user_id=existing_athlete.user_id)
+        if user:
+            return user
+
+    synthetic_email = f"strava_{strava_athlete_id}@sporttrack.local"
+    display_name = f"{firstname or ''} {lastname or ''}".strip() or f"Strava #{strava_athlete_id}"
+
+    existing_by_email = get_user_by_email(session=session, email=synthetic_email)
+    if existing_by_email:
+        return existing_by_email
+
+    user = User(
+        email=synthetic_email,
+        password_hash="__strava_auth__",
+        display_name=display_name,
+        is_active=True,
+    )
     session.add(user)
     session.commit()
     session.refresh(user)
