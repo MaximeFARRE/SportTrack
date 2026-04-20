@@ -1,25 +1,44 @@
+import os
 from pathlib import Path
-from pydantic_settings import BaseSettings, SettingsConfigDict
 
-_ENV_FILE = Path(__file__).resolve().parent.parent / ".env"
-
-
-class Settings(BaseSettings):
-    app_name: str = "SportTrack"
-    app_version: str = "0.1.0"
-    debug: bool = True
-
-    database_url: str = "sqlite:///./sporttrack.db"
-    strava_client_id: str = ""
-    strava_client_secret: str = ""
-    strava_redirect_uri: str = "http://127.0.0.1:8000/athletes/strava/callback"
-    strava_scope: str = "read,activity:read_all"
-    streamlit_url: str = "http://localhost:8501"
-
-    model_config = SettingsConfigDict(
-        env_file=str(_ENV_FILE),
-        env_file_encoding="utf-8"
-    )
+try:
+    from dotenv import load_dotenv
+    load_dotenv(Path(__file__).resolve().parent.parent / ".env")
+except ImportError:
+    pass
 
 
-settings = Settings()
+def _get(key: str, default: str = "") -> str:
+    try:
+        import streamlit as st
+        val = st.secrets.get(key)
+        if val is not None:
+            return str(val)
+    except Exception:
+        pass
+    return os.getenv(key, default)
+
+
+class _Settings:
+    @property
+    def database_url(self) -> str:
+        return _get("DATABASE_URL", "sqlite:///./sporttrack.db")
+
+    @property
+    def strava_client_id(self) -> str:
+        return _get("STRAVA_CLIENT_ID", "")
+
+    @property
+    def strava_client_secret(self) -> str:
+        return _get("STRAVA_CLIENT_SECRET", "")
+
+    @property
+    def strava_redirect_uri(self) -> str:
+        return _get("STRAVA_REDIRECT_URI", "http://localhost:18501")
+
+    @property
+    def strava_scope(self) -> str:
+        return _get("STRAVA_SCOPE", "read,activity:read_all")
+
+
+settings = _Settings()

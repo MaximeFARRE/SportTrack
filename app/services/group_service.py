@@ -190,6 +190,49 @@ def get_group_weekly_comparison(
     return comparison_rows
 
 
+def get_all_users_weekly_comparison(
+    session: Session,
+    start_date: date | None = None,
+    end_date: date | None = None,
+) -> list[dict[str, Any]]:
+    from app.models import User
+    users = list(session.exec(select(User)).all())
+    rows = []
+    for user in users:
+        athletes = list(session.exec(select(Athlete).where(Athlete.user_id == user.id)).all())
+        athlete_ids = [a.id for a in athletes]
+
+        sessions_count = duration_sec = 0
+        distance_m = elevation_gain_m = training_load = 0.0
+
+        if athlete_ids:
+            stmt = select(WeeklyMetric).where(WeeklyMetric.athlete_id.in_(athlete_ids))
+            if start_date:
+                stmt = stmt.where(WeeklyMetric.week_start_date >= start_date)
+            if end_date:
+                stmt = stmt.where(WeeklyMetric.week_start_date <= end_date)
+            metrics = list(session.exec(stmt).all())
+            sessions_count = sum(m.sessions_count for m in metrics)
+            duration_sec = sum(m.duration_sec for m in metrics)
+            distance_m = float(sum(m.distance_m for m in metrics))
+            elevation_gain_m = float(sum(m.elevation_gain_m for m in metrics))
+            training_load = float(sum(m.training_load for m in metrics))
+
+        rows.append({
+            "user_id": user.id,
+            "display_name": user.display_name,
+            "athlete_count": len(athlete_ids),
+            "sessions_count": sessions_count,
+            "duration_sec": duration_sec,
+            "distance_m": distance_m,
+            "elevation_gain_m": elevation_gain_m,
+            "training_load": training_load,
+        })
+
+    rows.sort(key=lambda r: r["training_load"], reverse=True)
+    return rows
+
+
 def touch_group_updated_at(session: Session, group_id: int) -> None:
     group = get_group_by_id(session=session, group_id=group_id)
     if not group:

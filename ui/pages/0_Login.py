@@ -1,6 +1,5 @@
 import streamlit as st
 
-from ui.api_client import connect_strava_url, update_display_name
 from ui.session import clear_current_user, get_current_user, save_current_user
 
 
@@ -18,11 +17,19 @@ if current_user:
 
     if submitted:
         try:
-            updated = update_display_name(user_id=current_user["id"], display_name=display_name)
-            save_current_user(updated)
+            from app.db import get_db
+            from app.services.auth_service import update_user_display_name
+            with get_db() as session:
+                updated = update_user_display_name(
+                    session=session,
+                    user_id=current_user["id"],
+                    display_name=display_name,
+                )
+            user_dict = {"id": updated.id, "email": updated.email, "display_name": updated.display_name}
+            save_current_user(user_dict)
             st.success("Profil mis a jour.")
             st.rerun()
-        except RuntimeError as exc:
+        except Exception as exc:
             st.error(str(exc))
 
     if st.button("Se deconnecter"):
@@ -31,7 +38,8 @@ if current_user:
 else:
     st.write("Connecte ton compte Strava pour acceder a SportTrack.")
     try:
-        url = connect_strava_url()
+        from app.services.strava_service import build_strava_authorization_url
+        url = build_strava_authorization_url(state="login")
         st.link_button("Se connecter avec Strava", url, type="primary")
-    except RuntimeError as exc:
-        st.error(f"Backend injoignable : {exc}")
+    except Exception as exc:
+        st.error(f"Erreur de configuration Strava : {exc}")

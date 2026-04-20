@@ -2,7 +2,9 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 
-from ui.api_client import list_athletes, weekly_metrics
+from app.db import get_db
+from app.services.metrics_service import list_weekly_metrics
+from app.services.strava_service import get_athletes_for_user
 from ui.session import require_login
 
 
@@ -16,67 +18,49 @@ st.title("Progression")
 
 user = require_login()
 
-try:
-    athletes = list_athletes(user_id=user["id"])
-except RuntimeError as exc:
-    st.error(str(exc))
-    st.stop()
+with get_db() as session:
+    athletes = get_athletes_for_user(session=session, user_id=user["id"])
 
 if not athletes:
     st.info("Aucun athlete disponible.")
     st.stop()
 
 athlete_map = {
-    (f"{a.get('firstname') or ''} {a.get('lastname') or ''}".strip() or f"Athlete #{a['id']}"): a["id"]
+    (f"{a.firstname or ''} {a.lastname or ''}".strip() or f"Athlete #{a.id}"): a.id
     for a in athletes
 }
 athlete_label = st.selectbox("Athlete", list(athlete_map.keys()))
 athlete_id = athlete_map[athlete_label]
 
-try:
-    metrics = weekly_metrics(athlete_id=athlete_id)
-except RuntimeError as exc:
-    st.error(str(exc))
-    st.stop()
+with get_db() as session:
+    metrics = list_weekly_metrics(session=session, athlete_id=athlete_id)
 
 if not metrics:
-    st.info("Aucune metrique hebdomadaire. Lancez un sync puis 'Recalcul metrics' depuis le dashboard.")
+    st.info("Aucune metrique hebdomadaire. Lancez un sync depuis le dashboard.")
     st.stop()
 
-df = pd.DataFrame(metrics).sort_values("week_start_date")
-df["distance_km"] = (df["distance_m"] / 1000).round(2)
+df = pd.DataFrame([{
+    "week_start_date": m.week_start_date,
+    "distance_km": round(m.distance_m / 1000, 2),
+    "sessions_count": m.sessions_count,
+    "training_load": m.training_load,
+    "elevation_gain_m": m.elevation_gain_m,
+    "duration_sec": m.duration_sec,
+} for m in metrics]).sort_values("week_start_date")
 
 col1, col2 = st.columns(2)
 col3, col4 = st.columns(2)
 
-fig_distance = px.bar(
-    df, x="week_start_date", y="distance_km",
-    title="Distance hebdomadaire (km)",
-    labels={"distance_km": "Distance (km)", "week_start_date": "Semaine"},
-)
-fig_sessions = px.bar(
-    df, x="week_start_date", y="sessions_count",
-    title="Nombre de seances par semaine",
-    labels={"sessions_count": "Seances", "week_start_date": "Semaine"},
-)
-fig_load = px.line(
-    df, x="week_start_date", y="training_load",
-    title="Training load hebdomadaire",
-    labels={"training_load": "Charge", "week_start_date": "Semaine"},
-    markers=True,
-)
-fig_elevation = px.bar(
-    df, x="week_start_date", y="elevation_gain_m",
-    title="Denivele positif hebdomadaire (m)",
-    labels={"elevation_gain_m": "D+ (m)", "week_start_date": "Semaine"},
-)
-
-col1.plotly_chart(fig_distance, use_container_width=True)
-col2.plotly_chart(fig_sessions, use_container_width=True)
-col3.plotly_chart(fig_load, use_container_width=True)
-col4.plotly_chart(fig_elevation, use_container_width=True)
+col1.plotly_chart(px.bar(df, x="week_start_date", y="distance_km", title="Distance hebdo (km)",
+                         labels={"distance_km": "km", "week_start_date": "Semaine"}), use_container_width=True)
+col2.plotly_chart(px.bar(df, x="week_start_date", y="sessions_count", title="Seances par semaine",
+                         labels={"sessions_count": "Seances", "week_start_date": "Semaine"}), use_container_width=True)
+col3.plotly_chart(px.line(df, x="week_start_date", y="training_load", title="Training load hebdo",
+                          labels={"training_load": "Charge", "week_start_date": "Semaine"}, markers=True), use_container_width=True)
+col4.plotly_chart(px.bar(df, x="week_start_date", y="elevation_gain_m", title="D+ hebdo (m)",
+                         labels={"elevation_gain_m": "D+ (m)", "week_start_date": "Semaine"}), use_container_width=True)
 
 with st.expander("Donnees brutes", expanded=False):
-    display_df = df[["week_start_date", "sessions_count", "distance_km", "elevation_gain_m", "training_load"]].copy()
-    display_df["duree"] = df["duration_sec"].apply(fmt_duration)
-    st.dataframe(display_df, use_container_width=True, hide_index=True)
+    df["duree"] = df["duration_sec"].apply(fmt_duration)
+    st.dataframe(df[["week_start_date", "sessions_count", "distance_km", "elevation_gain_m", "training_load", "duree"]],
+                 use_container_width=True, hide_index=True)

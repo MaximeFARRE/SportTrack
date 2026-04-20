@@ -1,31 +1,30 @@
-from sqlmodel import SQLModel, Session, create_engine
+from contextlib import contextmanager
 
-from app.config import settings
+import streamlit as st
+from sqlmodel import Session, SQLModel, create_engine
 
-# Important :
-# on importe les modèles pour que SQLModel les connaisse
 from app.models import (  # noqa: F401
-    User,
-    Athlete,
     Activity,
+    Athlete,
+    DailyMetric,
+    Goal,
     Group,
     GroupMember,
-    DailyMetric,
+    User,
     WeeklyMetric,
-    Goal,
 )
 
 
-engine = create_engine(
-    settings.database_url,
-    echo=False
-)
-
-
-def create_db_and_tables() -> None:
+@st.cache_resource
+def _get_engine():
+    from app.config import settings
+    engine = create_engine(settings.database_url, echo=False)
     SQLModel.metadata.create_all(engine)
+    return engine
 
 
-def get_session():
+@contextmanager
+def get_db():
+    engine = _get_engine()
     with Session(engine) as session:
         yield session

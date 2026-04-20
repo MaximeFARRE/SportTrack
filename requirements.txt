@@ -1,7 +1,6 @@
-fastapi
-uvicorn
 sqlmodel
-pydantic-settings
+pydantic
 streamlit
 plotly
 python-dotenv
+psycopg2-binary
