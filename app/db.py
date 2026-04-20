@@ -2,6 +2,10 @@ from sqlmodel import SQLModel, Session, create_engine
 
 from app.config import settings
 
+# Important :
+# on importe les modèles pour que SQLModel les connaisse
+from app.models import User, Athlete, Activity  # noqa: F401
+
 
 engine = create_engine(
     settings.database_url,
