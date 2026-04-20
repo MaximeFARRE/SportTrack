@@ -128,6 +128,22 @@ def weekly_metrics(athlete_id: int, start_date: str | None = None, end_date: str
     )
 
 
+def weekly_comparison_all_users(
+    actor_user_id: int,
+    start_date: str | None = None,
+    end_date: str | None = None,
+) -> dict[str, Any]:
+    return request_json(
+        "GET",
+        "/metrics/comparison/weekly",
+        params={
+            "actor_user_id": actor_user_id,
+            "start_date": start_date,
+            "end_date": end_date,
+        },
+    )
+
+
 def sync_recent_strava(athlete_id: int, per_page: int = 30) -> dict[str, Any]:
     return request_json(
         "POST",

@@ -3,7 +3,7 @@ from typing import Any
 
 from sqlmodel import Session, select
 
-from app.models import Activity, DailyMetric, WeeklyMetric
+from app.models import Activity, Athlete, DailyMetric, User, WeeklyMetric
 
 
 def _compute_training_load(duration_sec: int) -> float:
@@ -216,3 +216,73 @@ def get_dashboard_summary(
             for item in recent_activities
         ],
     }
+
+
+def get_weekly_comparison_for_all_connected_users(
+    session: Session,
+    actor_user_id: int,
+    start_date: date | None = None,
+    end_date: date | None = None,
+) -> list[dict[str, Any]]:
+    actor = session.get(User, actor_user_id)
+    if not actor or not actor.is_active:
+        raise LookupError("Utilisateur introuvable.")
+
+    athletes = list(session.exec(select(Athlete)).all())
+    athlete_ids_by_user_id: dict[int, list[int]] = {}
+    for athlete in athletes:
+        athlete_ids_by_user_id.setdefault(athlete.user_id, []).append(athlete.id)
+
+    if not athlete_ids_by_user_id:
+        return []
+
+    connected_user_ids = list(athlete_ids_by_user_id.keys())
+    users_statement = (
+        select(User)
+        .where(User.id.in_(connected_user_ids))
+        .where(User.is_active == True)
+        .order_by(User.display_name.asc(), User.id.asc())
+    )
+    connected_users = list(session.exec(users_statement).all())
+
+    comparison_rows: list[dict[str, Any]] = []
+    for user in connected_users:
+        athlete_ids = athlete_ids_by_user_id.get(user.id, [])
+        sessions_count = 0
+        duration_sec = 0
+        distance_m = 0.0
+        elevation_gain_m = 0.0
+        training_load = 0.0
+
+        if athlete_ids:
+            metrics_statement = select(WeeklyMetric).where(WeeklyMetric.athlete_id.in_(athlete_ids))
+            if start_date:
+                metrics_statement = metrics_statement.where(WeeklyMetric.week_start_date >= start_date)
+            if end_date:
+                metrics_statement = metrics_statement.where(WeeklyMetric.week_start_date <= end_date)
+            metrics = list(session.exec(metrics_statement).all())
+
+            sessions_count = sum(metric.sessions_count for metric in metrics)
+            duration_sec = sum(metric.duration_sec for metric in metrics)
+            distance_m = float(sum(metric.distance_m for metric in metrics))
+            elevation_gain_m = float(sum(metric.elevation_gain_m for metric in metrics))
+            training_load = float(sum(metric.training_load for metric in metrics))
+
+        comparison_rows.append(
+            {
+                "user_id": user.id,
+                "display_name": user.display_name,
+                "athlete_count": len(athlete_ids),
+                "sessions_count": sessions_count,
+                "duration_sec": duration_sec,
+                "distance_m": distance_m,
+                "elevation_gain_m": elevation_gain_m,
+                "training_load": training_load,
+            }
+        )
+
+    comparison_rows.sort(
+        key=lambda item: (item["training_load"], item["distance_m"], item["sessions_count"]),
+        reverse=True,
+    )
+    return comparison_rows

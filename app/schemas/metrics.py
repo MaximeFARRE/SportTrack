@@ -61,3 +61,21 @@ class DashboardSummaryRead(BaseModel):
     sports_breakdown: list[DashboardSportStatRead]
     weekly_metrics: list[WeeklyMetricRead]
     recent_activities: list[DashboardRecentActivityRead]
+
+
+class WeeklyComparisonMemberRead(BaseModel):
+    user_id: int
+    display_name: str
+    athlete_count: int
+    sessions_count: int
+    duration_sec: int
+    distance_m: float
+    elevation_gain_m: float
+    training_load: float
+
+
+class WeeklyComparisonRead(BaseModel):
+    actor_user_id: int
+    start_date: date | None
+    end_date: date | None
+    members: list[WeeklyComparisonMemberRead]

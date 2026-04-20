@@ -1,12 +1,13 @@
 from datetime import date
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlmodel import Session
 
 from app.db import get_session
-from app.schemas.metrics import DailyMetricRead, DashboardSummaryRead, WeeklyMetricRead
+from app.schemas.metrics import DailyMetricRead, DashboardSummaryRead, WeeklyComparisonRead, WeeklyMetricRead
 from app.services.metrics_service import (
     get_dashboard_summary,
+    get_weekly_comparison_for_all_connected_users,
     list_daily_metrics,
     list_weekly_metrics,
     recompute_metrics_for_athlete,
@@ -77,4 +78,29 @@ def read_dashboard_summary(
         athlete_id=athlete_id,
         period_days=period_days,
         recent_activities_limit=recent_activities_limit,
+    )
+
+
+@router.get("/comparison/weekly", response_model=WeeklyComparisonRead)
+def read_weekly_comparison_for_all_connected_users(
+    actor_user_id: int = Query(..., description="Utilisateur qui consulte."),
+    start_date: date | None = Query(default=None),
+    end_date: date | None = Query(default=None),
+    session: Session = Depends(get_session),
+) -> WeeklyComparisonRead:
+    try:
+        members = get_weekly_comparison_for_all_connected_users(
+            session=session,
+            actor_user_id=actor_user_id,
+            start_date=start_date,
+            end_date=end_date,
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+    return WeeklyComparisonRead(
+        actor_user_id=actor_user_id,
+        start_date=start_date,
+        end_date=end_date,
+        members=members,
     )

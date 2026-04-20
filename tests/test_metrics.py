@@ -1,11 +1,11 @@
-from datetime import datetime
+from datetime import date, datetime
 from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
 from app.db import create_db_and_tables, get_session
 from app.main import app
-from app.models import Activity, Athlete, User
+from app.models import Activity, Athlete, User, WeeklyMetric
 
 
 def test_recompute_and_read_metrics() -> None:
@@ -110,3 +110,134 @@ def test_recompute_and_read_metrics() -> None:
         assert dashboard_payload["sessions_count"] == 3
         assert len(dashboard_payload["sports_breakdown"]) == 2
         assert len(dashboard_payload["recent_activities"]) == 3
+
+
+def test_weekly_comparison_all_connected_users() -> None:
+    create_db_and_tables()
+    session_generator = get_session()
+    session = next(session_generator)
+
+    try:
+        run_id = uuid4().hex[:8]
+        actor_name = f"Actor {run_id}"
+        member_a_name = f"Member A {run_id}"
+        member_b_name = f"Member B {run_id}"
+        inactive_name = f"Inactive {run_id}"
+
+        actor = User(
+            email=f"metrics_actor_{uuid4().hex}@example.com",
+            password_hash="hash",
+            display_name=actor_name,
+            is_active=True,
+        )
+        member_a = User(
+            email=f"metrics_member_a_{uuid4().hex}@example.com",
+            password_hash="hash",
+            display_name=member_a_name,
+            is_active=True,
+        )
+        member_b = User(
+            email=f"metrics_member_b_{uuid4().hex}@example.com",
+            password_hash="hash",
+            display_name=member_b_name,
+            is_active=True,
+        )
+        inactive = User(
+            email=f"metrics_inactive_{uuid4().hex}@example.com",
+            password_hash="hash",
+            display_name=inactive_name,
+            is_active=False,
+        )
+        session.add(actor)
+        session.add(member_a)
+        session.add(member_b)
+        session.add(inactive)
+        session.commit()
+        session.refresh(actor)
+        session.refresh(member_a)
+        session.refresh(member_b)
+        session.refresh(inactive)
+
+        actor_athlete = Athlete(user_id=actor.id, provider="strava", provider_athlete_id=uuid4().hex)
+        member_a_athlete = Athlete(user_id=member_a.id, provider="strava", provider_athlete_id=uuid4().hex)
+        member_b_athlete = Athlete(user_id=member_b.id, provider="strava", provider_athlete_id=uuid4().hex)
+        inactive_athlete = Athlete(user_id=inactive.id, provider="strava", provider_athlete_id=uuid4().hex)
+        session.add(actor_athlete)
+        session.add(member_a_athlete)
+        session.add(member_b_athlete)
+        session.add(inactive_athlete)
+        session.commit()
+        session.refresh(actor_athlete)
+        session.refresh(member_a_athlete)
+        session.refresh(member_b_athlete)
+        session.refresh(inactive_athlete)
+
+        actor_metric = WeeklyMetric(
+            athlete_id=actor_athlete.id,
+            week_start_date=date(2026, 4, 20),
+            sessions_count=3,
+            duration_sec=9000,
+            distance_m=22000,
+            elevation_gain_m=350,
+            training_load=150,
+        )
+        member_a_metric = WeeklyMetric(
+            athlete_id=member_a_athlete.id,
+            week_start_date=date(2026, 4, 20),
+            sessions_count=4,
+            duration_sec=12000,
+            distance_m=30000,
+            elevation_gain_m=500,
+            training_load=190,
+        )
+        member_b_metric = WeeklyMetric(
+            athlete_id=member_b_athlete.id,
+            week_start_date=date(2026, 4, 20),
+            sessions_count=2,
+            duration_sec=5400,
+            distance_m=14000,
+            elevation_gain_m=180,
+            training_load=95,
+        )
+        inactive_metric = WeeklyMetric(
+            athlete_id=inactive_athlete.id,
+            week_start_date=date(2026, 4, 20),
+            sessions_count=5,
+            duration_sec=13000,
+            distance_m=35000,
+            elevation_gain_m=700,
+            training_load=210,
+        )
+        session.add(actor_metric)
+        session.add(member_a_metric)
+        session.add(member_b_metric)
+        session.add(inactive_metric)
+        session.commit()
+
+        actor_user_id = actor.id
+    finally:
+        session_generator.close()
+
+    with TestClient(app) as client:
+        response = client.get(
+            f"/metrics/comparison/weekly?actor_user_id={actor_user_id}&start_date=2026-04-20&end_date=2026-04-20"
+        )
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["actor_user_id"] == actor_user_id
+        members = payload["members"]
+        by_name = {item["display_name"]: item for item in members}
+
+        assert inactive_name not in by_name
+        assert member_a_name in by_name
+        assert actor_name in by_name
+        assert member_b_name in by_name
+
+        assert by_name[member_a_name]["training_load"] == 190
+        assert by_name[actor_name]["training_load"] == 150
+        assert by_name[member_b_name]["training_load"] == 95
+        assert (
+            by_name[member_a_name]["training_load"]
+            > by_name[actor_name]["training_load"]
+            > by_name[member_b_name]["training_load"]
+        )

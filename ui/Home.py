@@ -30,10 +30,8 @@ if current_user:
     st.markdown(
         "Navigue via le menu a gauche :\n"
         "- **Mon dashboard** — apercu de ta periode\n"
-        "- **Mes activites** — liste et filtres\n"
         "- **Progression** — graphes hebdomadaires\n"
-        "- **Analyse seance** — detail d'une activite\n"
-        "- **Groupes / Comparaison** — challenge entre amis\n"
+        "- **Comparaison** — comparaison entre tous les utilisateurs connectes\n"
         "- **Objectifs** — tes objectifs de saison"
     )
 else:
