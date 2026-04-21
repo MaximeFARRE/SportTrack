@@ -3,7 +3,8 @@ from typing import Any
 
 from sqlmodel import Session, select
 
-from app.models import Activity, Athlete, DailyMetric, User, WeeklyMetric
+from app.models import Activity, Athlete, DailyMetric, Goal, User, WeeklyMetric
+from app.services.gamification_service import build_personal_gamification
 
 
 ATL_ALPHA = 2.0 / (7 + 1)
@@ -1124,6 +1125,16 @@ def get_dashboard_summary(
 
     athlete = session.get(Athlete, athlete_id)
     current_user_id = athlete.user_id if athlete else None
+    goals_completed_30d = 0
+    goals_completed_since = now_utc - timedelta(days=30)
+    goals_statement = (
+        select(Goal)
+        .where(Goal.athlete_id == athlete_id)
+        .where(Goal.is_active == False)
+        .where(Goal.updated_at >= goals_completed_since)
+    )
+    goals_completed_30d = len(list(session.exec(goals_statement).all()))
+
     leaderboard_start = datetime.combine(today - timedelta(days=6), datetime.min.time(), tzinfo=UTC)
     leaderboard = _build_mini_leaderboard(
         session=session,
@@ -1133,19 +1144,43 @@ def get_dashboard_summary(
         sport_type=sport_type,
     )
 
+    personal_gamification = build_personal_gamification(
+        activities=activities,
+        reference_date=today,
+        sessions_target=3,
+        sport_type=sport_type,
+        goals_completed_30d=goals_completed_30d,
+    )
+    weekly_challenges = personal_gamification.get("weekly_challenges", [])
+    pending_weekly = next(
+        (item for item in weekly_challenges if not item.get("is_complete")),
+        None,
+    )
+    weekly_challenge_label = (
+        pending_weekly["label"]
+        if pending_weekly
+        else weekly_challenges[0]["label"] if weekly_challenges else _compute_weekly_challenge(
+            fitness_status=status,
+            snapshot_7d=snapshot_7d,
+            has_long_session_alert=has_long_session_alert,
+        )
+    )
+
     gamification = {
-        "streak_days": streak_days,
+        "streak_days": int(personal_gamification.get("streak_days", streak_days)),
+        "streak_weeks_target": int(personal_gamification.get("streak_weeks_target", 0)),
         "recent_badge": _compute_badge(
             streak_days=streak_days,
             snapshot_7d=snapshot_7d,
             load_change_pct=load_change_pct,
         ),
-        "weekly_challenge": _compute_weekly_challenge(
-            fitness_status=status,
-            snapshot_7d=snapshot_7d,
-            has_long_session_alert=has_long_session_alert,
-        ),
+        "badges": personal_gamification.get("badges", []),
+        "weekly_challenge": weekly_challenge_label,
+        "weekly_challenges": weekly_challenges,
+        "xp": personal_gamification.get("xp", {}),
+        "activity_feed": personal_gamification.get("activity_feed", []),
         "mini_leaderboard": leaderboard,
+        "goals_completed_30d": goals_completed_30d,
     }
 
     return {
@@ -1330,6 +1365,35 @@ def get_progression_summary(
         reference_date=today,
     )
 
+    goals_completed_since = now_utc - timedelta(days=30)
+    goals_statement = (
+        select(Goal)
+        .where(Goal.athlete_id == athlete_id)
+        .where(Goal.is_active == False)
+        .where(Goal.updated_at >= goals_completed_since)
+    )
+    goals_completed_30d = len(list(session.exec(goals_statement).all()))
+
+    personal_gamification = build_personal_gamification(
+        activities=activities,
+        reference_date=today,
+        sessions_target=sessions_target,
+        sport_type=sport_type,
+        goals_completed_30d=goals_completed_30d,
+    )
+    personal_badges = personal_gamification.get("badges", [])
+    existing_titles = {badge.get("title", "") for badge in badges}
+    for badge in personal_badges:
+        if badge.get("title", "") not in existing_titles:
+            badges.append(
+                {
+                    "code": badge.get("code", "badge"),
+                    "title": badge.get("title", "Badge"),
+                    "description": badge.get("description", ""),
+                }
+            )
+            existing_titles.add(badge.get("title", ""))
+
     return {
         "athlete_id": athlete_id,
         "sport_filter": sport_type,
@@ -1364,6 +1428,14 @@ def get_progression_summary(
             "longest_active_streak_days": longest_active_streak_days,
         },
         "badges": badges,
+        "gamification": {
+            "streak_days": int(personal_gamification.get("streak_days", 0)),
+            "streak_weeks_target": int(personal_gamification.get("streak_weeks_target", 0)),
+            "weekly_challenges": personal_gamification.get("weekly_challenges", []),
+            "xp": personal_gamification.get("xp", {}),
+            "activity_feed": personal_gamification.get("activity_feed", []),
+            "goals_completed_30d": goals_completed_30d,
+        },
     }
 
 

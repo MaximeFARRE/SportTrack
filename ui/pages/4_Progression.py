@@ -238,6 +238,39 @@ def render_badges_block(badges: list[dict[str, str]]) -> None:
         st.success(f"**{badge.get('title', 'Badge')}** - {badge.get('description', '')}")
 
 
+def render_gamification_block(gamification: dict[str, Any]) -> None:
+    st.subheader("Bloc 6 - Gamification")
+    xp = gamification.get("xp", {})
+    cols = st.columns(4)
+    cols[0].metric("Streak jours", int(gamification.get("streak_days", 0)))
+    cols[1].metric("Streak semaines", int(gamification.get("streak_weeks_target", 0)))
+    cols[2].metric("Objectifs valides (30j)", int(gamification.get("goals_completed_30d", 0)))
+    cols[3].metric("Niveau", int(xp.get("level", 1)) if xp else 1)
+
+    if xp:
+        st.caption(
+            f"XP {float(xp.get('xp_total', 0.0)):.1f} | "
+            f"Progression niveau {float(xp.get('progress_in_level_pct', 0.0)):.1f}% | "
+            f"XP restant {float(xp.get('xp_to_next_level', 0.0)):.1f}"
+        )
+
+    weekly_challenges = gamification.get("weekly_challenges", [])
+    if weekly_challenges:
+        st.write("Defis hebdo:")
+        for challenge in weekly_challenges:
+            prefix = "[OK]" if challenge.get("is_complete") else "[ ]"
+            st.write(
+                f"{prefix} {challenge.get('label', 'Defi')} "
+                f"({challenge.get('current', 0)}/{challenge.get('target', 0)} {challenge.get('unit', '')})"
+            )
+
+    feed = gamification.get("activity_feed", [])
+    if feed:
+        st.write("Feed recent:")
+        for event in feed:
+            st.write(f"- {event.get('message', '')}")
+
+
 st.set_page_config(page_title="Progression", page_icon="📈", layout="wide")
 st.title("Progression")
 st.caption("Volume, regularite, performance et robustesse compares sur des periodes equivalentes.")
@@ -289,3 +322,4 @@ render_long_term_block(progression.get("weekly_trends", []))
 render_performance_block(progression.get("performance", {}))
 render_robustness_block(progression.get("robustness", {}), sessions_target=int(sessions_target))
 render_badges_block(progression.get("badges", []))
+render_gamification_block(progression.get("gamification", {}))

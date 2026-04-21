@@ -6,6 +6,7 @@ from typing import Any, Optional
 from sqlmodel import Session, select
 
 from app.models import Activity, Athlete, Goal, User
+from app.services.gamification_service import build_personal_gamification
 from app.schemas.goal import GoalCreate, GoalUpdate
 from app.services.metrics_service import get_dashboard_summary
 
@@ -728,6 +729,31 @@ def _compute_goal_campaign(session: Session, goal: Goal) -> dict[str, Any]:
         lookback_end=today,
     )
 
+    goals_completed_since = datetime.now(UTC) - timedelta(days=30)
+    goals_statement = (
+        select(Goal)
+        .where(Goal.athlete_id == goal.athlete_id)
+        .where(Goal.is_active == False)
+        .where(Goal.updated_at >= goals_completed_since)
+    )
+    goals_completed_30d = len(list(session.exec(goals_statement).all()))
+    personal_gamification = build_personal_gamification(
+        activities=activities,
+        reference_date=today,
+        sessions_target=weekly_target,
+        sport_type=config["sport_type"] if config["goal_type"] != "frequency_training" else None,
+        goals_completed_30d=goals_completed_30d,
+    )
+    weekly_challenges = personal_gamification.get("weekly_challenges", [])
+    pending_challenge = next((item for item in weekly_challenges if not item.get("is_complete")), None)
+    if pending_challenge:
+        weekly_mission = f"Mission: {pending_challenge.get('label', weekly_mission)}."
+    xp_goal_bonus = 1.2 if current_status in {"en bonne voie", "tres en avance"} else 1.0
+    xp = dict(personal_gamification.get("xp", {}))
+    if xp:
+        xp["goal_alignment_bonus"] = xp_goal_bonus
+        xp["xp_total"] = round(float(xp.get("xp_total", 0.0)) * xp_goal_bonus, 1)
+
     return {
         "goal_id": goal.id,
         "goal_type": config["goal_type"],
@@ -777,6 +803,13 @@ def _compute_goal_campaign(session: Session, goal: Goal) -> dict[str, Any]:
             "weekly_mission": weekly_mission,
             "next_actions": next_actions[:3],
             "badge": badge,
+            "badges": personal_gamification.get("badges", []),
+            "streak_days": int(personal_gamification.get("streak_days", 0)),
+            "streak_weeks_target": int(personal_gamification.get("streak_weeks_target", 0)),
+            "weekly_challenges": weekly_challenges,
+            "xp": xp,
+            "activity_feed": personal_gamification.get("activity_feed", []),
+            "goals_completed_30d": goals_completed_30d,
             "friends_comparison": friends_comparison,
         },
     }

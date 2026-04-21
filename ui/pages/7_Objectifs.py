@@ -308,11 +308,41 @@ def render_goal_gamification_block(summary: dict[str, Any]) -> None:
     st.info(gamification.get("weekly_mission", "Mission hebdo indisponible."))
     st.write(f"**{gamification.get('badge', 'Badge mission en cours')}**")
 
+    xp = gamification.get("xp", {})
+    cols = st.columns(4)
+    cols[0].metric("Streak jours", int(gamification.get("streak_days", 0)))
+    cols[1].metric("Streak semaines", int(gamification.get("streak_weeks_target", 0)))
+    cols[2].metric("Objectifs valides 30j", int(gamification.get("goals_completed_30d", 0)))
+    cols[3].metric("Niveau", int(xp.get("level", 1)) if xp else 1)
+
+    if xp:
+        st.caption(
+            f"XP {float(xp.get('xp_total', 0.0)):.1f} | "
+            f"Progression niveau {float(xp.get('progress_in_level_pct', 0.0)):.1f}% | "
+            f"Bonus alignement objectif x{float(xp.get('goal_alignment_bonus', 1.0)):.2f}"
+        )
+
     next_actions = gamification.get("next_actions", [])
     if next_actions:
         st.write("Prochaines actions recommandees:")
         for idx, action in enumerate(next_actions, start=1):
             st.write(f"{idx}. {action}")
+
+    weekly_challenges = gamification.get("weekly_challenges", [])
+    if weekly_challenges:
+        st.write("Defis hebdo:")
+        for challenge in weekly_challenges:
+            prefix = "[OK]" if challenge.get("is_complete") else "[ ]"
+            st.write(
+                f"{prefix} {challenge.get('label', 'Defi')} "
+                f"({challenge.get('current', 0)}/{challenge.get('target', 0)} {challenge.get('unit', '')})"
+            )
+
+    badges = gamification.get("badges", [])
+    if badges:
+        st.write("Badges de preparation:")
+        for badge in badges[:4]:
+            st.write(f"- {badge.get('title', 'Badge')}: {badge.get('description', '')}")
 
     friends = gamification.get("friends_comparison", [])
     if friends:
@@ -328,6 +358,12 @@ def render_goal_gamification_block(summary: dict[str, Any]) -> None:
             use_container_width=True,
             hide_index=True,
         )
+
+    feed = gamification.get("activity_feed", [])
+    if feed:
+        st.write("Feed d'activite:")
+        for event in feed:
+            st.write(f"- {event.get('message', '')}")
 
 
 st.set_page_config(page_title="Objectifs", page_icon="🎯", layout="wide")

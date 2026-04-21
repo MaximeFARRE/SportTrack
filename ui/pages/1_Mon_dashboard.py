@@ -257,28 +257,58 @@ def render_alerts(alerts: list[dict[str, str]]) -> None:
 
 def render_gamification(gamification: dict[str, Any]) -> None:
     st.subheader("Bloc 7 - Gamification rapide")
-    cols = st.columns([1, 2, 2])
-    cols[0].metric("Streak", f"{int(gamification.get('streak_days', 0))} jours")
-    cols[1].markdown(f"**{gamification.get('recent_badge', 'Badge: n/a')}**")
-    cols[2].markdown(f"**{gamification.get('weekly_challenge', 'Defi: n/a')}**")
+    xp = gamification.get("xp", {})
+    cols = st.columns([1, 1, 2, 2])
+    cols[0].metric("Streak jours", f"{int(gamification.get('streak_days', 0))} j")
+    cols[1].metric("Streak semaines", f"{int(gamification.get('streak_weeks_target', 0))} sem")
+    cols[2].markdown(f"**{gamification.get('recent_badge', 'Badge: n/a')}**")
+    cols[3].markdown(f"**Defi prioritaire: {gamification.get('weekly_challenge', 'n/a')}**")
+
+    if xp:
+        st.caption(
+            f"Niveau {int(xp.get('level', 1))} | "
+            f"XP {float(xp.get('xp_total', 0.0)):.1f} | "
+            f"Progression niveau {float(xp.get('progress_in_level_pct', 0.0)):.1f}%"
+        )
+
+    weekly_challenges = gamification.get("weekly_challenges", [])
+    if weekly_challenges:
+        st.write("Defis hebdo:")
+        for challenge in weekly_challenges:
+            prefix = "[OK]" if challenge.get("is_complete") else "[ ]"
+            st.write(
+                f"{prefix} {challenge.get('label', 'Defi')} "
+                f"({challenge.get('current', 0)}/{challenge.get('target', 0)} {challenge.get('unit', '')})"
+            )
+
+    badges = gamification.get("badges", [])
+    if badges:
+        st.write("Badges recents:")
+        for badge in badges[:4]:
+            st.write(f"- {badge.get('title', 'Badge')}: {badge.get('description', '')}")
 
     leaderboard = gamification.get("mini_leaderboard", [])
     if not leaderboard:
         st.info("Classement groupe indisponible.")
-        return
+    else:
+        leaderboard_df = pd.DataFrame(leaderboard)
+        leaderboard_df["distance_km"] = (leaderboard_df["distance_m"] / 1000.0).round(1)
+        leaderboard_df["training_load"] = leaderboard_df["training_load"].round(1)
+        leaderboard_df["joueur"] = leaderboard_df.apply(
+            lambda row: f"{row['display_name']} (toi)" if row.get("is_current_user") else row["display_name"],
+            axis=1,
+        )
+        st.dataframe(
+            leaderboard_df[["rank", "joueur", "sessions_count", "training_load", "distance_km"]],
+            use_container_width=True,
+            hide_index=True,
+        )
 
-    leaderboard_df = pd.DataFrame(leaderboard)
-    leaderboard_df["distance_km"] = (leaderboard_df["distance_m"] / 1000.0).round(1)
-    leaderboard_df["training_load"] = leaderboard_df["training_load"].round(1)
-    leaderboard_df["joueur"] = leaderboard_df.apply(
-        lambda row: f"{row['display_name']} (toi)" if row.get("is_current_user") else row["display_name"],
-        axis=1,
-    )
-    st.dataframe(
-        leaderboard_df[["rank", "joueur", "sessions_count", "training_load", "distance_km"]],
-        use_container_width=True,
-        hide_index=True,
-    )
+    feed = gamification.get("activity_feed", [])
+    if feed:
+        st.write("Feed d'activite:")
+        for event in feed:
+            st.write(f"- {event.get('message', '')}")
 
 
 def render_recent_activities(recent_activities: list[dict[str, Any]]) -> None:

@@ -112,8 +112,14 @@ class DashboardLeaderboardRowRead(BaseModel):
 
 class DashboardGamificationRead(BaseModel):
     streak_days: int = Field(ge=0)
+    streak_weeks_target: int = Field(default=0, ge=0)
     recent_badge: str
     weekly_challenge: str
+    badges: list[dict[str, str]] = []
+    weekly_challenges: list[dict[str, Any]] = []
+    xp: dict[str, Any] = {}
+    activity_feed: list[dict[str, str]] = []
+    goals_completed_30d: int = Field(default=0, ge=0)
     mini_leaderboard: list[DashboardLeaderboardRowRead]
 
 
@@ -202,6 +208,7 @@ class ProgressionSummaryRead(BaseModel):
     performance: ProgressionPerformanceRead
     robustness: ProgressionRobustnessRead
     badges: list[ProgressionBadgeRead]
+    gamification: dict[str, Any] = {}
 
 
 class WeeklyComparisonMemberRead(BaseModel):
