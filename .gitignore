@@ -10,7 +10,9 @@ __pycache__/
 venv/
 
 # Local environment files
+.env
 .env.local
+.streamlit/secrets.toml
 
 # SQLite artifacts
 *.db-journal
