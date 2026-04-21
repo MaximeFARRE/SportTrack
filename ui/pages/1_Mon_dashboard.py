@@ -17,12 +17,28 @@ from app.services.strava_service import build_strava_authorization_url, get_athl
 from ui.session import require_login
 
 SYNC_IMPORT_ERROR: Exception | None = None
+auto_sync_strava_if_stale = None
+import_strava_history = None
+sync_recent_strava_activities = None
 try:
-    from app.services.sync_service import auto_sync_strava_if_stale, import_strava_history, sync_recent_strava_activities
+    from app.services import sync_service as _sync_service
+
+    auto_sync_strava_if_stale = getattr(_sync_service, "auto_sync_strava_if_stale", None)
+    import_strava_history = getattr(_sync_service, "import_strava_history", None)
+    sync_recent_strava_activities = getattr(_sync_service, "sync_recent_strava_activities", None)
+
+    missing_functions: list[str] = []
+    if not callable(sync_recent_strava_activities):
+        missing_functions.append("sync_recent_strava_activities")
+    if not callable(import_strava_history):
+        missing_functions.append("import_strava_history")
+    if not callable(auto_sync_strava_if_stale):
+        missing_functions.append("auto_sync_strava_if_stale")
+    if missing_functions:
+        SYNC_IMPORT_ERROR = ImportError(
+            "Fonctions sync manquantes: " + ", ".join(missing_functions)
+        )
 except Exception as exc:
-    auto_sync_strava_if_stale = None
-    import_strava_history = None
-    sync_recent_strava_activities = None
     SYNC_IMPORT_ERROR = exc
 
 
@@ -156,6 +172,12 @@ def render_sport_breakdown(sports_breakdown: list[dict[str, Any]]) -> None:
         return
 
     sport_df = pd.DataFrame(sports_breakdown)
+    for column in ["sport_type", "sessions_count", "duration_sec", "distance_m", "elevation_gain_m", "training_load"]:
+        if column not in sport_df.columns:
+            sport_df[column] = 0 if column != "sport_type" else "unknown"
+    sport_df["sport_type"] = sport_df["sport_type"].fillna("unknown").astype(str)
+    for numeric_column in ["sessions_count", "duration_sec", "distance_m", "elevation_gain_m", "training_load"]:
+        sport_df[numeric_column] = pd.to_numeric(sport_df[numeric_column], errors="coerce").fillna(0)
     sport_df["distance_km"] = (sport_df["distance_m"] / 1000.0).round(2)
     sport_df["duration_h"] = (sport_df["duration_sec"] / 3600.0).round(2)
     sport_df["training_load"] = sport_df["training_load"].round(2)
@@ -427,7 +449,10 @@ except Exception as exc:
 
 with st.expander("Synchronisation", expanded=False):
     if SYNC_IMPORT_ERROR:
-        st.warning(f"Sync Strava indisponible dans cet environnement: {SYNC_IMPORT_ERROR}")
+        if callable(sync_recent_strava_activities) or callable(import_strava_history):
+            st.info(f"Auto-sync partiellement indisponible: {SYNC_IMPORT_ERROR}")
+        else:
+            st.warning(f"Sync Strava indisponible dans cet environnement: {SYNC_IMPORT_ERROR}")
 
     col1, col2, col3 = st.columns(3)
 
@@ -509,9 +534,11 @@ with get_db() as session:
         sport_type=None,
     )
 
-sport_options = ["Tous sports"] + sorted(
-    [item["sport_type"] for item in dashboard_all_sports.get("sports_breakdown", [])]
-)
+sport_values = {
+    str(item.get("sport_type", "unknown")).strip() or "unknown"
+    for item in dashboard_all_sports.get("sports_breakdown", [])
+}
+sport_options = ["Tous sports"] + sorted(sport_values)
 selected_sport_label = controls_right.selectbox("Sport", options=sport_options, index=0)
 
 dashboard = dashboard_all_sports

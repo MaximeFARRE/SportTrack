@@ -329,7 +329,11 @@ with get_db() as session:
         sport_type=None,
     )
 
-sport_options = ["Tous sports"] + sorted([item["sport_type"] for item in dashboard_seed.get("sports_breakdown", [])])
+sport_values = {
+    str(item.get("sport_type", "unknown")).strip() or "unknown"
+    for item in dashboard_seed.get("sports_breakdown", [])
+}
+sport_options = ["Tous sports"] + sorted(sport_values)
 selected_sport = st.selectbox("Filtre sport", options=sport_options, index=0)
 sport_filter = None if selected_sport == "Tous sports" else selected_sport
 
