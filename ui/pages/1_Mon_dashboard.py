@@ -13,8 +13,16 @@ import streamlit as st
 from app.db import get_db
 from app.services.metrics_service import get_dashboard_summary, recompute_metrics_for_athlete
 from app.services.strava_service import build_strava_authorization_url, get_athletes_for_user
-from app.services.sync_service import auto_sync_strava_if_stale, import_strava_history, sync_recent_strava_activities
 from ui.session import require_login
+
+SYNC_IMPORT_ERROR: Exception | None = None
+try:
+    from app.services.sync_service import auto_sync_strava_if_stale, import_strava_history, sync_recent_strava_activities
+except Exception as exc:
+    auto_sync_strava_if_stale = None
+    import_strava_history = None
+    sync_recent_strava_activities = None
+    SYNC_IMPORT_ERROR = exc
 
 
 PERIOD_OPTIONS = {
@@ -386,23 +394,31 @@ period_days = PERIOD_OPTIONS[selected_period_label]
 selected_athlete = athlete_map[selected_athlete_label]
 
 try:
-    with get_db() as session:
-        auto_sync_result = auto_sync_strava_if_stale(session=session, athlete_id=selected_athlete.id)
-    if auto_sync_result:
-        st.info(
-            "Auto-sync execute: "
-            f"{auto_sync_result['imported_count']} importees, {auto_sync_result['skipped_count']} deja presentes."
-        )
+    if callable(auto_sync_strava_if_stale):
+        with get_db() as session:
+            auto_sync_result = auto_sync_strava_if_stale(session=session, athlete_id=selected_athlete.id)
+        if auto_sync_result:
+            st.info(
+                "Auto-sync execute: "
+                f"{auto_sync_result['imported_count']} importees, {auto_sync_result['skipped_count']} deja presentes."
+            )
 except Exception as exc:
     st.warning(f"Auto-sync indisponible: {exc}")
 
 with st.expander("Synchronisation", expanded=False):
+    if SYNC_IMPORT_ERROR:
+        st.warning(f"Sync Strava indisponible dans cet environnement: {SYNC_IMPORT_ERROR}")
+
     col1, col2, col3 = st.columns(3)
 
     with col1.form("sync_recent_form"):
         per_page_recent = st.number_input("Activites a recuperer", min_value=1, max_value=200, value=30, step=1)
+        sync_recent_available = callable(sync_recent_strava_activities)
         submit_recent = st.form_submit_button("Sync recent")
     if submit_recent:
+        if not sync_recent_available:
+            st.error("Sync recent indisponible: fonction non chargee.")
+            st.stop()
         with st.spinner("Synchronisation en cours..."):
             try:
                 with get_db() as session:
@@ -419,8 +435,12 @@ with st.expander("Synchronisation", expanded=False):
     with col2.form("sync_history_form"):
         per_page_history = st.number_input("Activites par page", min_value=1, max_value=200, value=100, step=1)
         max_pages_history = st.number_input("Nombre de pages max", min_value=1, max_value=100, value=10, step=1)
+        sync_history_available = callable(import_strava_history)
         submit_history = st.form_submit_button("Import historique")
     if submit_history:
+        if not sync_history_available:
+            st.error("Import historique indisponible: fonction non chargee.")
+            st.stop()
         with st.spinner("Import historique en cours (peut prendre quelques minutes)..."):
             try:
                 with get_db() as session:
