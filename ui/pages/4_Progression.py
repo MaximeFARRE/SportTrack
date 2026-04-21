@@ -1,5 +1,6 @@
 import os
 import sys
+import inspect
 from typing import Any
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
@@ -9,7 +10,11 @@ import plotly.express as px
 import streamlit as st
 
 from app.db import get_db
-from app.services.metrics_service import get_dashboard_summary, get_progression_summary
+from app.services.metrics_service import get_dashboard_summary
+try:
+    from app.services.metrics_service import get_progression_summary
+except ImportError:
+    get_progression_summary = None
 from app.services.strava_service import get_athletes_for_user
 from ui.session import require_login
 
@@ -47,6 +52,25 @@ def fmt_time(seconds: int | None) -> str:
     if hours > 0:
         return f"{hours}h{minutes:02d}m{sec:02d}s"
     return f"{minutes}m{sec:02d}s"
+
+
+def fetch_dashboard_summary(
+    session: Any,
+    athlete_id: int,
+    period_days: int,
+    recent_activities_limit: int,
+    sport_type: str | None,
+) -> dict[str, Any]:
+    requested_kwargs = {
+        "session": session,
+        "athlete_id": athlete_id,
+        "period_days": period_days,
+        "recent_activities_limit": recent_activities_limit,
+        "sport_type": sport_type,
+    }
+    accepted_params = set(inspect.signature(get_dashboard_summary).parameters.keys())
+    call_kwargs = {key: value for key, value in requested_kwargs.items() if key in accepted_params}
+    return get_dashboard_summary(**call_kwargs)
 
 
 def render_summary_block(summary: dict[str, Any]) -> None:
@@ -297,11 +321,12 @@ sessions_target = right.selectbox("Objectif seances / semaine", options=[2, 3, 4
 athlete_id = athlete_map[selected_athlete_label]
 
 with get_db() as session:
-    dashboard_seed = get_dashboard_summary(
+    dashboard_seed = fetch_dashboard_summary(
         session=session,
         athlete_id=athlete_id,
         period_days=84,
         recent_activities_limit=1,
+        sport_type=None,
     )
 
 sport_options = ["Tous sports"] + sorted([item["sport_type"] for item in dashboard_seed.get("sports_breakdown", [])])
@@ -309,6 +334,13 @@ selected_sport = st.selectbox("Filtre sport", options=sport_options, index=0)
 sport_filter = None if selected_sport == "Tous sports" else selected_sport
 
 with get_db() as session:
+    if not callable(get_progression_summary):
+        st.error(
+            "La fonction get_progression_summary est indisponible dans app/services/metrics_service.py. "
+            "Mets a jour ce fichier (ou redeploie) pour utiliser la page Progression."
+        )
+        st.stop()
+
     progression = get_progression_summary(
         session=session,
         athlete_id=athlete_id,

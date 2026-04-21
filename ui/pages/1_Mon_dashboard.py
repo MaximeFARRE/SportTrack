@@ -1,6 +1,7 @@
 import os
 import sys
 from datetime import date
+import inspect
 from typing import Any
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
@@ -43,6 +44,25 @@ def fmt_km(meters: float) -> str:
 
 def fmt_load(value: float) -> str:
     return f"{value:.1f}"
+
+
+def fetch_dashboard_summary(
+    session: Any,
+    athlete_id: int,
+    period_days: int,
+    recent_activities_limit: int,
+    sport_type: str | None,
+) -> dict[str, Any]:
+    requested_kwargs = {
+        "session": session,
+        "athlete_id": athlete_id,
+        "period_days": period_days,
+        "recent_activities_limit": recent_activities_limit,
+        "sport_type": sport_type,
+    }
+    accepted_params = set(inspect.signature(get_dashboard_summary).parameters.keys())
+    call_kwargs = {key: value for key, value in requested_kwargs.items() if key in accepted_params}
+    return get_dashboard_summary(**call_kwargs)
 
 
 def render_quick_snapshot(snapshot: dict[str, Any]) -> None:
@@ -481,7 +501,7 @@ with st.expander("Synchronisation", expanded=False):
             st.error(str(exc))
 
 with get_db() as session:
-    dashboard_all_sports = get_dashboard_summary(
+    dashboard_all_sports = fetch_dashboard_summary(
         session=session,
         athlete_id=selected_athlete.id,
         period_days=period_days,
@@ -497,7 +517,7 @@ selected_sport_label = controls_right.selectbox("Sport", options=sport_options, 
 dashboard = dashboard_all_sports
 if selected_sport_label != "Tous sports":
     with get_db() as session:
-        dashboard = get_dashboard_summary(
+        dashboard = fetch_dashboard_summary(
             session=session,
             athlete_id=selected_athlete.id,
             period_days=period_days,
