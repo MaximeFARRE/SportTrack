@@ -230,3 +230,53 @@ def auto_sync_strava_if_stale(
         per_page=per_page,
         max_pages=max_pages,
     )
+
+
+def auto_sync_user_athletes_if_stale(
+    session: Session,
+    user_id: int,
+    stale_after_hours: int = AUTO_SYNC_STALE_HOURS,
+    per_page: int = 30,
+    max_pages: int = 10,
+) -> dict[str, Any]:
+    athletes_statement = (
+        select(Athlete)
+        .where(Athlete.user_id == user_id)
+        .where(Athlete.provider == "strava")
+        .order_by(Athlete.created_at.asc())
+    )
+    athletes = list(session.exec(athletes_statement).all())
+
+    synced_results: list[dict[str, Any]] = []
+    errors: list[dict[str, Any]] = []
+    skipped_count = 0
+
+    for athlete in athletes:
+        try:
+            result = auto_sync_strava_if_stale(
+                session=session,
+                athlete_id=athlete.id,
+                stale_after_hours=stale_after_hours,
+                per_page=per_page,
+                max_pages=max_pages,
+            )
+            if result is None:
+                skipped_count += 1
+                continue
+            synced_results.append(result)
+        except Exception as exc:
+            errors.append(
+                {
+                    "athlete_id": athlete.id,
+                    "error": str(exc),
+                }
+            )
+
+    return {
+        "user_id": user_id,
+        "athletes_count": len(athletes),
+        "synced_count": len(synced_results),
+        "skipped_count": skipped_count,
+        "synced_results": synced_results,
+        "errors": errors,
+    }

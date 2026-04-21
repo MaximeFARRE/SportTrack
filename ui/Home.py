@@ -5,7 +5,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 
 import streamlit as st
 
-from ui.session import clear_current_user, get_current_user, save_current_user
+from ui.session import clear_current_user, ensure_auto_sync_for_current_user, get_current_user, save_current_user
 
 
 st.set_page_config(page_title="SportTrack", page_icon="🏃", layout="wide")
@@ -51,6 +51,7 @@ st.caption("Suivi d'entrainement connecte a Strava")
 
 current_user = get_current_user()
 if current_user:
+    ensure_auto_sync_for_current_user()
     st.success(f"Connecte en tant que : **{current_user.get('display_name') or current_user.get('email')}**")
     if st.button("Se deconnecter"):
         clear_current_user()
