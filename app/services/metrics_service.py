@@ -192,6 +192,21 @@ def get_dashboard_summary(
     )
 
     weekly_metrics = list_weekly_metrics(session=session, athlete_id=athlete_id)[:12]
+    weekly_metrics_payload = [
+        {
+            "id": item.id,
+            "athlete_id": item.athlete_id,
+            "week_start_date": item.week_start_date,
+            "sessions_count": item.sessions_count,
+            "duration_sec": item.duration_sec,
+            "distance_m": item.distance_m,
+            "elevation_gain_m": item.elevation_gain_m,
+            "training_load": item.training_load,
+            "created_at": item.created_at,
+            "updated_at": item.updated_at,
+        }
+        for item in weekly_metrics
+    ]
     recent_activities = activities[:recent_activities_limit]
 
     return {
@@ -202,7 +217,7 @@ def get_dashboard_summary(
         "distance_m": distance_m,
         "elevation_gain_m": elevation_gain_m,
         "sports_breakdown": sports_breakdown,
-        "weekly_metrics": weekly_metrics,
+        "weekly_metrics": weekly_metrics_payload,
         "recent_activities": [
             {
                 "id": item.id,

@@ -18,7 +18,7 @@ from app.models import (  # noqa: F401
 @st.cache_resource
 def _get_engine():
     from app.config import settings
-    engine = create_engine(settings.database_url, echo=False)
+    engine = create_engine(settings.database_url, echo=False, pool_pre_ping=True)
     SQLModel.metadata.create_all(engine)
     return engine
 

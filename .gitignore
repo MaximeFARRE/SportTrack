@@ -15,6 +15,7 @@ venv/
 .streamlit/secrets.toml
 
 # SQLite artifacts
+*.db
 *.db-journal
 
 # OS/editor artifacts

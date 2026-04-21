@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 
 from app.db import create_db_and_tables, get_session
 from app.main import app
-from app.models import Athlete, User
+from app.models import Activity, Athlete, User
 
 
 def test_sync_strava_activities_imports_data(monkeypatch) -> None:
@@ -186,3 +186,151 @@ def test_import_strava_history_paginates(monkeypatch) -> None:
         assert any(item["provider_activity_id"] == "1001" for item in activities_payload)
         assert any(item["provider_activity_id"] == "1002" for item in activities_payload)
         assert any(item["provider_activity_id"] == "1003" for item in activities_payload)
+
+
+def test_sync_strava_uses_incremental_after_from_latest_activity(monkeypatch) -> None:
+    create_db_and_tables()
+    session_generator = get_session()
+    session = next(session_generator)
+
+    try:
+        user = User(
+            email=f"sync_inc_user_{uuid4().hex}@example.com",
+            password_hash="hash",
+            display_name="Sync Incremental User",
+            is_active=True,
+        )
+        session.add(user)
+        session.commit()
+        session.refresh(user)
+
+        athlete = Athlete(
+            user_id=user.id,
+            provider="strava",
+            provider_athlete_id=uuid4().hex,
+            access_token="token_inc",
+            refresh_token="refresh_inc",
+            token_expires_at=int((datetime.now(UTC) + timedelta(hours=1)).timestamp()),
+        )
+        session.add(athlete)
+        session.commit()
+        session.refresh(athlete)
+
+        latest_existing = Activity(
+            athlete_id=athlete.id,
+            provider_activity_id="already-here",
+            name="Existing Activity",
+            sport_type="Run",
+            start_date=datetime.fromisoformat("2026-04-20T10:00:00+00:00"),
+            duration_sec=3600,
+            moving_time_sec=3500,
+            distance_m=10000,
+            elevation_gain_m=120,
+        )
+        session.add(latest_existing)
+        session.commit()
+
+        athlete_id = athlete.id
+        expected_after = int(latest_existing.start_date.timestamp()) - 1
+    finally:
+        session_generator.close()
+
+    def fake_fetch_athlete_activities(access_token: str, per_page: int = 30, page: int = 1, after: int | None = None):
+        assert access_token == "token_inc"
+        assert page == 1
+        assert after == expected_after
+        return [
+            {
+                "id": 333,
+                "name": "New Activity",
+                "sport_type": "Run",
+                "start_date": "2026-04-20T12:00:00Z",
+                "elapsed_time": 1800,
+                "moving_time": 1700,
+                "distance": 5100,
+                "total_elevation_gain": 70,
+            }
+        ]
+
+    monkeypatch.setattr(
+        "app.services.sync_service.fetch_athlete_activities",
+        fake_fetch_athlete_activities,
+    )
+
+    with TestClient(app) as client:
+        sync_response = client.post(f"/sync/athletes/{athlete_id}/strava?per_page=30")
+        assert sync_response.status_code == 200
+        payload = sync_response.json()
+        assert payload["fetched_count"] == 1
+        assert payload["imported_count"] == 1
+        assert payload["after_epoch"] == expected_after
+
+
+def test_sync_refreshes_token_before_expiration(monkeypatch) -> None:
+    create_db_and_tables()
+    session_generator = get_session()
+    session = next(session_generator)
+
+    try:
+        user = User(
+            email=f"sync_refresh_user_{uuid4().hex}@example.com",
+            password_hash="hash",
+            display_name="Sync Refresh User",
+            is_active=True,
+        )
+        session.add(user)
+        session.commit()
+        session.refresh(user)
+
+        athlete = Athlete(
+            user_id=user.id,
+            provider="strava",
+            provider_athlete_id=uuid4().hex,
+            access_token="token_old",
+            refresh_token="refresh_old",
+            token_expires_at=int((datetime.now(UTC) + timedelta(seconds=30)).timestamp()),
+        )
+        session.add(athlete)
+        session.commit()
+        session.refresh(athlete)
+        athlete_id = athlete.id
+    finally:
+        session_generator.close()
+
+    refreshed_expires_at = int((datetime.now(UTC) + timedelta(hours=2)).timestamp())
+
+    def fake_refresh_access_token(refresh_token: str) -> dict:
+        assert refresh_token == "refresh_old"
+        return {
+            "access_token": "token_new",
+            "refresh_token": "refresh_new",
+            "expires_at": refreshed_expires_at,
+        }
+
+    def fake_fetch_athlete_activities(access_token: str, per_page: int = 30, page: int = 1, after: int | None = None):
+        assert access_token == "token_new"
+        return []
+
+    monkeypatch.setattr(
+        "app.services.strava_service.refresh_access_token",
+        fake_refresh_access_token,
+    )
+    monkeypatch.setattr(
+        "app.services.sync_service.fetch_athlete_activities",
+        fake_fetch_athlete_activities,
+    )
+
+    with TestClient(app) as client:
+        sync_response = client.post(f"/sync/athletes/{athlete_id}/strava?per_page=30")
+        assert sync_response.status_code == 200
+
+    session_generator = get_session()
+    session = next(session_generator)
+    try:
+        refreshed_athlete = session.get(Athlete, athlete_id)
+        assert refreshed_athlete is not None
+        assert refreshed_athlete.access_token == "token_new"
+        assert refreshed_athlete.refresh_token == "refresh_new"
+        assert refreshed_athlete.token_expires_at == refreshed_expires_at
+    finally:
+        session_generator.close()

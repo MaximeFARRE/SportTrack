@@ -1,14 +1,23 @@
 import json
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from sqlmodel import Session
+from sqlmodel import Session, select
 
-from app.models import Athlete
+from app.models import Activity, Athlete
 from app.schemas.activity import ActivityCreate
 from app.services.activity_service import create_activity
 from app.services.metrics_service import recompute_metrics_for_athlete
 from app.services.strava_service import ensure_valid_access_token, fetch_athlete_activities
+
+
+AUTO_SYNC_STALE_HOURS = 6
+
+
+def _to_utc(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value.replace(tzinfo=UTC)
+    return value.astimezone(UTC)
 
 
 def _parse_strava_datetime(value: str | None) -> datetime:
@@ -41,10 +50,44 @@ def _map_strava_activity_to_create(athlete_id: int, payload: dict[str, Any]) -> 
     )
 
 
+def _fetch_athlete_activities_page(
+    access_token: str,
+    per_page: int,
+    page: int,
+    after: int | None,
+) -> list[dict[str, Any]]:
+    if after is None:
+        return fetch_athlete_activities(access_token=access_token, per_page=per_page, page=page)
+
+    try:
+        return fetch_athlete_activities(
+            access_token=access_token,
+            per_page=per_page,
+            page=page,
+            after=after,
+        )
+    except TypeError:
+        # Backward compatibility for tests or patched fakes not accepting "after".
+        return fetch_athlete_activities(access_token=access_token, per_page=per_page, page=page)
+
+
+def _get_latest_known_activity_after_epoch(session: Session, athlete_id: int) -> int | None:
+    statement = (
+        select(Activity)
+        .where(Activity.athlete_id == athlete_id)
+        .order_by(Activity.start_date.desc())
+    )
+    latest_activity = session.exec(statement).first()
+    if not latest_activity:
+        return None
+    return max(int(latest_activity.start_date.timestamp()) - 1, 0)
+
+
 def sync_recent_strava_activities(
     session: Session,
     athlete_id: int,
     per_page: int = 30,
+    max_pages: int = 1,
 ) -> dict[str, Any]:
     athlete = session.get(Athlete, athlete_id)
     if not athlete:
@@ -54,18 +97,33 @@ def sync_recent_strava_activities(
         raise ValueError("Seuls les athletes Strava peuvent etre synchronises.")
 
     access_token = ensure_valid_access_token(session=session, athlete=athlete)
-    activities_payload = fetch_athlete_activities(access_token=access_token, per_page=per_page, page=1)
+    after_epoch = _get_latest_known_activity_after_epoch(session=session, athlete_id=athlete.id)
 
+    fetched_count = 0
     imported_count = 0
     skipped_count = 0
 
-    for item in activities_payload:
-        try:
-            activity_data = _map_strava_activity_to_create(athlete_id=athlete.id, payload=item)
-            create_activity(session=session, activity_data=activity_data)
-            imported_count += 1
-        except ValueError:
-            skipped_count += 1
+    for page in range(1, max_pages + 1):
+        activities_payload = _fetch_athlete_activities_page(
+            access_token=access_token,
+            per_page=per_page,
+            page=page,
+            after=after_epoch,
+        )
+        if not activities_payload:
+            break
+
+        fetched_count += len(activities_payload)
+        for item in activities_payload:
+            try:
+                activity_data = _map_strava_activity_to_create(athlete_id=athlete.id, payload=item)
+                create_activity(session=session, activity_data=activity_data)
+                imported_count += 1
+            except ValueError:
+                skipped_count += 1
+
+        if len(activities_payload) < per_page:
+            break
 
     athlete.last_sync_at = datetime.now(UTC)
     athlete.updated_at = datetime.now(UTC)
@@ -77,9 +135,10 @@ def sync_recent_strava_activities(
 
     return {
         "athlete_id": athlete.id,
-        "fetched_count": len(activities_payload),
+        "fetched_count": fetched_count,
         "imported_count": imported_count,
         "skipped_count": skipped_count,
+        "after_epoch": after_epoch,
         "daily_metrics_count": metrics_result["daily_metrics_count"],
         "weekly_metrics_count": metrics_result["weekly_metrics_count"],
         "last_sync_at": athlete.last_sync_at.isoformat() if athlete.last_sync_at else None,
@@ -143,3 +202,31 @@ def import_strava_history(
         "weekly_metrics_count": metrics_result["weekly_metrics_count"],
         "last_sync_at": athlete.last_sync_at.isoformat() if athlete.last_sync_at else None,
     }
+
+
+def auto_sync_strava_if_stale(
+    session: Session,
+    athlete_id: int,
+    stale_after_hours: int = AUTO_SYNC_STALE_HOURS,
+    per_page: int = 30,
+    max_pages: int = 10,
+) -> dict[str, Any] | None:
+    athlete = session.get(Athlete, athlete_id)
+    if not athlete:
+        raise LookupError("Athlete introuvable.")
+
+    if athlete.provider != "strava":
+        return None
+
+    now_utc = datetime.now(UTC)
+    if athlete.last_sync_at and (now_utc - _to_utc(athlete.last_sync_at)) < timedelta(hours=stale_after_hours):
+        # Keep token healthy even when sync is skipped.
+        ensure_valid_access_token(session=session, athlete=athlete)
+        return None
+
+    return sync_recent_strava_activities(
+        session=session,
+        athlete_id=athlete.id,
+        per_page=per_page,
+        max_pages=max_pages,
+    )

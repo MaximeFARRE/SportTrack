@@ -10,7 +10,7 @@ import streamlit as st
 from app.db import get_db
 from app.services.metrics_service import get_dashboard_summary, recompute_metrics_for_athlete
 from app.services.strava_service import build_strava_authorization_url, get_athletes_for_user
-from app.services.sync_service import import_strava_history, sync_recent_strava_activities
+from app.services.sync_service import auto_sync_strava_if_stale, import_strava_history, sync_recent_strava_activities
 from ui.session import require_login
 
 
@@ -46,6 +46,17 @@ athlete_map = {
 }
 selected_label = st.selectbox("Athlete", list(athlete_map.keys()))
 selected_athlete = athlete_map[selected_label]
+
+try:
+    with get_db() as session:
+        auto_sync_result = auto_sync_strava_if_stale(session=session, athlete_id=selected_athlete.id)
+    if auto_sync_result:
+        st.info(
+            "Auto-sync execute: "
+            f"{auto_sync_result['imported_count']} importees, {auto_sync_result['skipped_count']} deja presentes."
+        )
+except Exception as exc:
+    st.warning(f"Auto-sync indisponible: {exc}")
 
 with st.expander("Synchronisation", expanded=False):
     col1, col2, col3 = st.columns(3)
@@ -127,13 +138,17 @@ else:
 st.subheader("Metriques hebdomadaires")
 weekly = dashboard.get("weekly_metrics", [])
 if weekly:
-    weekly_df = pd.DataFrame(weekly).sort_values("week_start_date")
-    weekly_df["distance_km"] = (weekly_df["distance_m"] / 1000).round(2)
-    cw1, cw2 = st.columns(2)
-    cw1.plotly_chart(px.bar(weekly_df, x="week_start_date", y="distance_km", title="Distance hebdo (km)",
-                            labels={"distance_km": "km", "week_start_date": "Semaine"}), use_container_width=True)
-    cw2.plotly_chart(px.line(weekly_df, x="week_start_date", y="training_load", title="Training load hebdo",
-                             labels={"training_load": "Charge", "week_start_date": "Semaine"}, markers=True), use_container_width=True)
+    weekly_df = pd.DataFrame(weekly)
+    if "week_start_date" not in weekly_df.columns:
+        st.info("Metriques hebdo indisponibles (format inattendu). Lancez un recalcul des metriques.")
+    else:
+        weekly_df = weekly_df.sort_values("week_start_date")
+        weekly_df["distance_km"] = (weekly_df["distance_m"] / 1000).round(2)
+        cw1, cw2 = st.columns(2)
+        cw1.plotly_chart(px.bar(weekly_df, x="week_start_date", y="distance_km", title="Distance hebdo (km)",
+                                labels={"distance_km": "km", "week_start_date": "Semaine"}), use_container_width=True)
+        cw2.plotly_chart(px.line(weekly_df, x="week_start_date", y="training_load", title="Training load hebdo",
+                                 labels={"training_load": "Charge", "week_start_date": "Semaine"}, markers=True), use_container_width=True)
 else:
     st.info("Aucune metrique hebdo. Lancez un sync.")
 

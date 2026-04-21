@@ -13,6 +13,7 @@ from app.models.athlete import Athlete
 STRAVA_AUTHORIZE_URL = "https://www.strava.com/oauth/authorize"
 STRAVA_TOKEN_URL = "https://www.strava.com/oauth/token"
 STRAVA_ACTIVITIES_URL = "https://www.strava.com/api/v3/athlete/activities"
+TOKEN_REFRESH_BUFFER_SECONDS = 10 * 60
 
 
 def _validate_strava_configuration() -> None:
@@ -118,7 +119,7 @@ def ensure_valid_access_token(session: Session, athlete: Athlete) -> str:
 
     now_ts = int(datetime.now(UTC).timestamp())
     token_expires_at = athlete.token_expires_at or 0
-    if token_expires_at > now_ts:
+    if token_expires_at > (now_ts + TOKEN_REFRESH_BUFFER_SECONDS):
         return athlete.access_token
 
     if not athlete.refresh_token:
@@ -143,8 +144,12 @@ def fetch_athlete_activities(
     access_token: str,
     per_page: int = 30,
     page: int = 1,
+    after: int | None = None,
 ) -> list[dict[str, Any]]:
-    query = urlencode({"per_page": per_page, "page": page})
+    query_params: dict[str, int] = {"per_page": per_page, "page": page}
+    if after is not None:
+        query_params["after"] = int(after)
+    query = urlencode(query_params)
     url = f"{STRAVA_ACTIVITIES_URL}?{query}"
     request = Request(
         url,
