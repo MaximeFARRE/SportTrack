@@ -20,6 +20,17 @@ from app.models import (  # noqa: F401
 )
 
 
+TRANSIENT_DB_CONNECTION_ERROR_MARKERS = (
+    "ssl connection has been closed unexpectedly",
+    "server closed the connection unexpectedly",
+    "connection not open",
+    "connection was closed in the middle of operation",
+    "terminating connection due to administrator command",
+    "could not receive data from server",
+    "connection reset by peer",
+)
+
+
 def _is_sqlite_io_error(exc: OperationalError) -> bool:
     message = str(exc).lower()
     return (
@@ -45,7 +56,7 @@ def _get_engine():
     from app.config import settings
 
     database_url = settings.database_url
-    engine = create_engine(database_url, echo=False, pool_pre_ping=True)
+    engine = create_engine(database_url, echo=False, pool_pre_ping=True, pool_recycle=1800)
     try:
         SQLModel.metadata.create_all(engine)
         return engine
@@ -66,6 +77,25 @@ def _get_engine():
         fallback_engine = create_engine(fallback_url, echo=False, pool_pre_ping=True)
         SQLModel.metadata.create_all(fallback_engine)
         return fallback_engine
+
+
+def is_transient_db_connection_error(exc: Exception) -> bool:
+    message = str(exc).lower()
+    return any(marker in message for marker in TRANSIENT_DB_CONNECTION_ERROR_MARKERS)
+
+
+def recycle_db_engine() -> None:
+    try:
+        _get_engine().dispose()
+    except Exception:
+        pass
+
+    clear_fn = getattr(_get_engine, "clear", None)
+    if callable(clear_fn):
+        try:
+            clear_fn()
+        except Exception:
+            pass
 
 
 @contextmanager

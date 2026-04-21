@@ -4,6 +4,7 @@ import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 import streamlit as st
+from sqlalchemy.exc import OperationalError
 
 from ui.session import clear_current_user, ensure_auto_sync_for_current_user, get_current_user, save_current_user
 
@@ -21,7 +22,7 @@ if error:
 elif code and not get_current_user():
     with st.spinner("Connexion Strava en cours..."):
         try:
-            from app.db import get_db
+            from app.db import get_db, is_transient_db_connection_error, recycle_db_engine
             from app.services.auth_service import get_or_create_user_for_strava
             from app.services.strava_service import exchange_code_for_token, upsert_strava_athlete
 
@@ -29,16 +30,29 @@ elif code and not get_current_user():
             athlete_payload = token_payload.get("athlete") or {}
             strava_athlete_id = str(athlete_payload.get("id", ""))
 
-            with get_db() as session:
-                user = get_or_create_user_for_strava(
-                    session=session,
-                    strava_athlete_id=strava_athlete_id,
-                    firstname=athlete_payload.get("firstname"),
-                    lastname=athlete_payload.get("lastname"),
-                )
-                upsert_strava_athlete(session=session, user_id=user.id, token_payload=token_payload)
-                user_dict = {"id": user.id, "email": user.email, "display_name": user.display_name}
+            user_dict = None
+            max_db_attempts = 2
+            for attempt in range(1, max_db_attempts + 1):
+                try:
+                    with get_db() as session:
+                        user = get_or_create_user_for_strava(
+                            session=session,
+                            strava_athlete_id=strava_athlete_id,
+                            firstname=athlete_payload.get("firstname"),
+                            lastname=athlete_payload.get("lastname"),
+                        )
+                        upsert_strava_athlete(session=session, user_id=user.id, token_payload=token_payload)
+                        user_dict = {"id": user.id, "email": user.email, "display_name": user.display_name}
+                    break
+                except OperationalError as db_exc:
+                    should_retry = attempt < max_db_attempts and is_transient_db_connection_error(db_exc)
+                    if not should_retry:
+                        raise
+                    recycle_db_engine()
+                    continue
 
+            if user_dict is None:
+                raise RuntimeError("Impossible de finaliser la connexion Strava (etat utilisateur vide).")
             save_current_user(user_dict)
             st.query_params.clear()
             st.rerun()
