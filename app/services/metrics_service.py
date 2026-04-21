@@ -890,25 +890,6 @@ def recompute_metrics_for_athlete(
         day_data["elevation_gain_m"] += max(float(activity.elevation_gain_m), 0.0)
         day_data["training_load"] += _compute_training_load(activity)
 
-    existing_daily_statement = select(DailyMetric).where(DailyMetric.athlete_id == athlete_id)
-    existing_daily_metrics = list(session.exec(existing_daily_statement).all())
-    for metric in existing_daily_metrics:
-        if _is_in_range(metric.metric_date, start_date, end_date):
-            session.delete(metric)
-
-    for metric_date, day_data in sorted(daily_aggregates.items()):
-        session.add(
-            DailyMetric(
-                athlete_id=athlete_id,
-                metric_date=metric_date,
-                sessions_count=int(day_data["sessions_count"]),
-                duration_sec=int(day_data["duration_sec"]),
-                distance_m=float(day_data["distance_m"]),
-                elevation_gain_m=float(day_data["elevation_gain_m"]),
-                training_load=round(float(day_data["training_load"]), 2),
-            )
-        )
-
     weekly_aggregates: dict[date, dict[str, float | int]] = {}
     for metric_date, day_data in daily_aggregates.items():
         week_start = _week_start(metric_date)
@@ -928,26 +909,52 @@ def recompute_metrics_for_athlete(
         week_data["elevation_gain_m"] += float(day_data["elevation_gain_m"])
         week_data["training_load"] += float(day_data["training_load"])
 
-    existing_weekly_statement = select(WeeklyMetric).where(WeeklyMetric.athlete_id == athlete_id)
-    existing_weekly_metrics = list(session.exec(existing_weekly_statement).all())
-    for metric in existing_weekly_metrics:
-        if _is_in_range(metric.week_start_date, start_date, end_date):
-            session.delete(metric)
+    try:
+        existing_daily_statement = select(DailyMetric).where(DailyMetric.athlete_id == athlete_id)
+        existing_daily_metrics = list(session.exec(existing_daily_statement).all())
+        existing_weekly_statement = select(WeeklyMetric).where(WeeklyMetric.athlete_id == athlete_id)
+        existing_weekly_metrics = list(session.exec(existing_weekly_statement).all())
 
-    for week_start, week_data in sorted(weekly_aggregates.items()):
-        session.add(
-            WeeklyMetric(
-                athlete_id=athlete_id,
-                week_start_date=week_start,
-                sessions_count=int(week_data["sessions_count"]),
-                duration_sec=int(week_data["duration_sec"]),
-                distance_m=float(week_data["distance_m"]),
-                elevation_gain_m=float(week_data["elevation_gain_m"]),
-                training_load=round(float(week_data["training_load"]), 2),
+        for metric in existing_daily_metrics:
+            if _is_in_range(metric.metric_date, start_date, end_date):
+                session.delete(metric)
+        for metric in existing_weekly_metrics:
+            if _is_in_range(metric.week_start_date, start_date, end_date):
+                session.delete(metric)
+
+        # Apply deletes before inserts to avoid unique conflicts on (athlete_id, metric_date/week_start_date).
+        session.flush()
+
+        for metric_date, day_data in sorted(daily_aggregates.items()):
+            session.add(
+                DailyMetric(
+                    athlete_id=athlete_id,
+                    metric_date=metric_date,
+                    sessions_count=int(day_data["sessions_count"]),
+                    duration_sec=int(day_data["duration_sec"]),
+                    distance_m=float(day_data["distance_m"]),
+                    elevation_gain_m=float(day_data["elevation_gain_m"]),
+                    training_load=round(float(day_data["training_load"]), 2),
+                )
             )
-        )
 
-    session.commit()
+        for week_start, week_data in sorted(weekly_aggregates.items()):
+            session.add(
+                WeeklyMetric(
+                    athlete_id=athlete_id,
+                    week_start_date=week_start,
+                    sessions_count=int(week_data["sessions_count"]),
+                    duration_sec=int(week_data["duration_sec"]),
+                    distance_m=float(week_data["distance_m"]),
+                    elevation_gain_m=float(week_data["elevation_gain_m"]),
+                    training_load=round(float(week_data["training_load"]), 2),
+                )
+            )
+
+        session.commit()
+    except Exception:
+        session.rollback()
+        raise
 
     return {
         "athlete_id": athlete_id,
