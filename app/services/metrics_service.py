@@ -516,6 +516,346 @@ def _build_mini_leaderboard(
     return top_rows
 
 
+def _variation_pct(current_value: float, previous_value: float) -> float | None:
+    if previous_value <= 0:
+        if current_value <= 0:
+            return 0.0
+        return None
+    return round(((current_value - previous_value) / previous_value) * 100.0, 1)
+
+
+def _clamp(value: float, lower: float, upper: float) -> float:
+    return max(lower, min(upper, value))
+
+
+def _compute_period_regularity_score(
+    daily_aggregates: dict[date, dict[str, float | int]],
+    start_date: date,
+    end_date: date,
+    sessions_target: int,
+) -> float:
+    period_days = (end_date - start_date).days + 1
+    if period_days <= 0:
+        return 0.0
+
+    active_days = 0
+    for day_offset in range(period_days):
+        metric_date = start_date + timedelta(days=day_offset)
+        if metric_date in daily_aggregates:
+            active_days += 1
+
+    full_weeks = max(period_days // 7, 1)
+    weeks_with_target = 0
+    for week_index in range(full_weeks):
+        week_start_date = start_date + timedelta(days=week_index * 7)
+        sessions = 0
+        for day_offset in range(7):
+            metric_date = week_start_date + timedelta(days=day_offset)
+            sessions += int(daily_aggregates.get(metric_date, {}).get("sessions_count", 0))
+        if sessions >= sessions_target:
+            weeks_with_target += 1
+
+    score = 100.0 * (
+        0.5 * (active_days / period_days)
+        + 0.5 * (weeks_with_target / full_weeks)
+    )
+    return round(score, 1)
+
+
+def _compute_longest_active_streak(active_dates: set[date]) -> int:
+    if not active_dates:
+        return 0
+
+    longest_streak = 0
+    current_streak = 0
+    previous_date: date | None = None
+    for metric_date in sorted(active_dates):
+        if previous_date and metric_date == previous_date + timedelta(days=1):
+            current_streak += 1
+        else:
+            current_streak = 1
+        previous_date = metric_date
+        longest_streak = max(longest_streak, current_streak)
+    return longest_streak
+
+
+def _add_moving_average_to_weekly_trends(
+    weekly_trends: list[dict[str, float | int | date]],
+    window: int = 3,
+) -> list[dict[str, float | int | date]]:
+    if window <= 1:
+        return weekly_trends
+
+    result = [dict(item) for item in weekly_trends]
+    for index, row in enumerate(result):
+        start_index = max(0, index - window + 1)
+        window_slice = result[start_index:index + 1]
+        denominator = len(window_slice) if window_slice else 1
+        row["duration_sec_ma3"] = round(
+            sum(float(item["duration_sec"]) for item in window_slice) / denominator,
+            1,
+        )
+        row["distance_m_ma3"] = round(
+            sum(float(item["distance_m"]) for item in window_slice) / denominator,
+            1,
+        )
+        row["training_load_ma3"] = round(
+            sum(float(item["training_load"]) for item in window_slice) / denominator,
+            2,
+        )
+    return result
+
+
+def _main_sport_for_period(
+    activities: list[Activity],
+    start_date: date,
+    end_date: date,
+) -> str | None:
+    by_sport_duration: dict[str, int] = {}
+    for activity in activities:
+        metric_date = _activity_metric_date(activity)
+        if metric_date < start_date or metric_date > end_date:
+            continue
+        sport_type = activity.sport_type or "Unknown"
+        by_sport_duration[sport_type] = by_sport_duration.get(sport_type, 0) + int(activity.duration_sec)
+
+    if not by_sport_duration:
+        return None
+
+    return max(by_sport_duration.items(), key=lambda item: item[1])[0]
+
+
+def _compute_run_performance(
+    activities: list[Activity],
+    current_start: date,
+    current_end: date,
+    previous_start: date,
+    previous_end: date,
+) -> dict[str, Any]:
+    run_activities = [
+        activity
+        for activity in activities
+        if _normalize_sport_type(activity.sport_type) in TRAIL_LIKE_SPORTS
+        and activity.duration_sec > 0
+        and activity.distance_m > 0
+    ]
+
+    thresholds_km = [1.0, 5.0, 10.0, 21.1]
+    records: list[dict[str, Any]] = []
+    for threshold_km in thresholds_km:
+        threshold_m = threshold_km * 1000.0
+        best_row: dict[str, Any] | None = None
+        for activity in run_activities:
+            if float(activity.distance_m) < threshold_m:
+                continue
+            distance_km = float(activity.distance_m) / 1000.0
+            pace_sec_per_km = float(activity.duration_sec) / distance_km
+            estimated_time_sec = int(round(pace_sec_per_km * threshold_km))
+            candidate = {
+                "distance_km": threshold_km,
+                "best_estimated_time_sec": estimated_time_sec,
+                "pace_sec_per_km": round(pace_sec_per_km, 1),
+                "activity_name": activity.name,
+                "activity_date": _activity_metric_date(activity),
+                "source_distance_km": round(distance_km, 2),
+            }
+            if best_row is None or candidate["best_estimated_time_sec"] < best_row["best_estimated_time_sec"]:
+                best_row = candidate
+        if best_row:
+            records.append(best_row)
+
+    def _average_pace_in_window(start_date: date, end_date: date) -> float | None:
+        total_duration = 0
+        total_distance_km = 0.0
+        for activity in run_activities:
+            metric_date = _activity_metric_date(activity)
+            if metric_date < start_date or metric_date > end_date:
+                continue
+            total_duration += int(activity.duration_sec)
+            total_distance_km += float(activity.distance_m) / 1000.0
+        if total_duration <= 0 or total_distance_km <= 0:
+            return None
+        return round(total_duration / total_distance_km, 1)
+
+    current_pace = _average_pace_in_window(current_start, current_end)
+    previous_pace = _average_pace_in_window(previous_start, previous_end)
+
+    pace_change_sec_per_km = None
+    pace_improvement_pct = None
+    if current_pace is not None and previous_pace is not None:
+        pace_change_sec_per_km = round(current_pace - previous_pace, 1)
+        if previous_pace > 0:
+            pace_improvement_pct = round(((previous_pace - current_pace) / previous_pace) * 100.0, 1)
+
+    return {
+        "sport_type": "run",
+        "run_records": records,
+        "summary": {
+            "avg_pace_sec_per_km_current_4w": current_pace,
+            "avg_pace_sec_per_km_previous_4w": previous_pace,
+            "pace_change_sec_per_km": pace_change_sec_per_km,
+            "pace_improvement_pct": pace_improvement_pct,
+        },
+    }
+
+
+def _compute_ride_performance(
+    activities: list[Activity],
+    current_start: date,
+    current_end: date,
+    previous_start: date,
+    previous_end: date,
+) -> dict[str, Any]:
+    ride_activities = [
+        activity
+        for activity in activities
+        if _normalize_sport_type(activity.sport_type) == "ride" and activity.duration_sec > 0
+    ]
+
+    def _window_stats(start_date: date, end_date: date) -> dict[str, float]:
+        duration_sec = 0
+        distance_m = 0.0
+        elevation_gain_m = 0.0
+        powers: list[float] = []
+        for activity in ride_activities:
+            metric_date = _activity_metric_date(activity)
+            if metric_date < start_date or metric_date > end_date:
+                continue
+            duration_sec += int(activity.duration_sec)
+            distance_m += float(activity.distance_m)
+            elevation_gain_m += float(activity.elevation_gain_m)
+            if activity.average_power is not None and activity.average_power > 0:
+                powers.append(float(activity.average_power))
+        avg_power = round(sum(powers) / len(powers), 1) if powers else None
+        return {
+            "duration_sec": float(duration_sec),
+            "distance_m": distance_m,
+            "elevation_gain_m": elevation_gain_m,
+            "avg_power_w": avg_power,
+        }
+
+    current_stats = _window_stats(current_start, current_end)
+    previous_stats = _window_stats(previous_start, previous_end)
+
+    best_distance = max((float(activity.distance_m) for activity in ride_activities), default=0.0)
+    best_duration = max((int(activity.duration_sec) for activity in ride_activities), default=0)
+    best_elevation = max((float(activity.elevation_gain_m) for activity in ride_activities), default=0.0)
+
+    return {
+        "sport_type": "ride",
+        "run_records": [],
+        "summary": {
+            "distance_current_4w_m": round(current_stats["distance_m"], 1),
+            "distance_previous_4w_m": round(previous_stats["distance_m"], 1),
+            "distance_change_pct_4w": _variation_pct(current_stats["distance_m"], previous_stats["distance_m"]),
+            "duration_current_4w_sec": int(current_stats["duration_sec"]),
+            "duration_previous_4w_sec": int(previous_stats["duration_sec"]),
+            "duration_change_pct_4w": _variation_pct(current_stats["duration_sec"], previous_stats["duration_sec"]),
+            "elevation_current_4w_m": round(current_stats["elevation_gain_m"], 1),
+            "elevation_previous_4w_m": round(previous_stats["elevation_gain_m"], 1),
+            "avg_power_current_4w_w": current_stats["avg_power_w"],
+            "avg_power_previous_4w_w": previous_stats["avg_power_w"],
+            "best_distance_m": round(best_distance, 1),
+            "best_duration_sec": int(best_duration),
+            "best_elevation_gain_m": round(best_elevation, 1),
+        },
+    }
+
+
+def _build_progression_badges(
+    weekly_trends: list[dict[str, float | int | date]],
+    regularity_current: float,
+    current_duration_4w_sec: float,
+    longest_active_streak_days: int,
+    activities: list[Activity],
+    reference_date: date,
+) -> list[dict[str, str]]:
+    badges: list[dict[str, str]] = []
+
+    if regularity_current >= 70:
+        badges.append(
+            {
+                "code": "regular_4w",
+                "title": "4 semaines regulieres",
+                "description": "Regularite elevee sur les 4 dernieres semaines.",
+            }
+        )
+
+    if len(weekly_trends) >= 4:
+        rolling_4w_durations: list[float] = []
+        for idx in range(3, len(weekly_trends)):
+            rolling_4w_durations.append(
+                sum(float(weekly_trends[j]["duration_sec"]) for j in range(idx - 3, idx + 1))
+            )
+        if rolling_4w_durations:
+            latest_4w = rolling_4w_durations[-1]
+            if latest_4w > 0 and latest_4w >= max(rolling_4w_durations):
+                badges.append(
+                    {
+                        "code": "record_4w_volume",
+                        "title": "Nouveau record de volume",
+                        "description": "Tes 4 dernieres semaines sont les plus denses de la periode.",
+                    }
+                )
+
+    current_year_rows = [
+        item for item in weekly_trends
+        if isinstance(item["week_start_date"], date) and item["week_start_date"].year == reference_date.year
+    ]
+    if current_year_rows:
+        best_year_week = max(current_year_rows, key=lambda item: float(item["training_load"]))
+        current_week_start = _week_start(reference_date)
+        if (
+            isinstance(best_year_week["week_start_date"], date)
+            and best_year_week["week_start_date"] == current_week_start
+            and float(best_year_week["training_load"]) > 0
+        ):
+            badges.append(
+                {
+                    "code": "best_week_year",
+                    "title": "Plus forte semaine de l'annee",
+                    "description": "Charge hebdo record sur l'annee en cours.",
+                }
+            )
+
+    month_durations: dict[tuple[int, int], int] = {}
+    for activity in activities:
+        metric_date = _activity_metric_date(activity)
+        key = (metric_date.year, metric_date.month)
+        month_durations[key] = month_durations.get(key, 0) + int(activity.duration_sec)
+
+    current_month_key = (reference_date.year, reference_date.month)
+    current_month_duration = month_durations.get(current_month_key, 0)
+    if month_durations and current_month_duration > 0 and current_month_duration >= max(month_durations.values()):
+        badges.append(
+            {
+                "code": "best_month_duration",
+                "title": "Meilleur mois en duree",
+                "description": "Ton mois actuel est le meilleur en temps d'entrainement.",
+            }
+        )
+
+    if longest_active_streak_days >= 10:
+        badges.append(
+            {
+                "code": "streak_10_days",
+                "title": "10 jours actifs consecutifs",
+                "description": "Serie solide sans rupture.",
+            }
+        )
+
+    if current_duration_4w_sec <= 0 and not badges:
+        badges.append(
+            {
+                "code": "start_block",
+                "title": "Bloc de progression a lancer",
+                "description": "Objectif: 3 seances par semaine pendant 4 semaines.",
+            }
+        )
+
+    return badges[:5]
+
+
 def recompute_metrics_for_athlete(
     session: Session,
     athlete_id: int,
@@ -844,6 +1184,186 @@ def get_dashboard_summary(
             }
             for item in recent_activities
         ],
+    }
+
+
+def get_progression_summary(
+    session: Session,
+    athlete_id: int,
+    weeks: int = 26,
+    sport_type: str | None = None,
+    sessions_target: int = 3,
+) -> dict[str, Any]:
+    if weeks < 8 or weeks > 52:
+        raise ValueError("weeks doit etre entre 8 et 52.")
+    if sessions_target < 1 or sessions_target > 7:
+        raise ValueError("sessions_target doit etre entre 1 et 7.")
+
+    now_utc = datetime.now(UTC)
+    today = now_utc.date()
+    period_current_start = today - timedelta(days=27)
+    period_previous_end = period_current_start - timedelta(days=1)
+    period_previous_start = period_previous_end - timedelta(days=27)
+
+    activities_statement = (
+        select(Activity)
+        .where(Activity.athlete_id == athlete_id)
+        .where(Activity.start_date <= now_utc)
+        .order_by(Activity.start_date.desc())
+    )
+    activities = list(session.exec(activities_statement).all())
+
+    normalized_filter = _normalize_sport_type(sport_type) if sport_type else None
+    if normalized_filter:
+        activities = [
+            activity for activity in activities
+            if _normalize_sport_type(activity.sport_type) == normalized_filter
+        ]
+
+    daily_aggregates = _build_daily_aggregates(activities)
+    weekly_trends = _build_weekly_trends(
+        daily_aggregates=daily_aggregates,
+        reference_date=today,
+        weeks_count=weeks,
+    )
+    weekly_trends = _add_moving_average_to_weekly_trends(weekly_trends=weekly_trends, window=3)
+
+    current_window = _aggregate_window(daily_aggregates, period_current_start, today)
+    previous_window = _aggregate_window(daily_aggregates, period_previous_start, period_previous_end)
+
+    current_duration = float(current_window["duration_sec"])
+    previous_duration = float(previous_window["duration_sec"])
+    current_load_avg = float(current_window["training_load"]) / 4.0
+    previous_load_avg = float(previous_window["training_load"]) / 4.0
+    regularity_current = _compute_period_regularity_score(
+        daily_aggregates=daily_aggregates,
+        start_date=period_current_start,
+        end_date=today,
+        sessions_target=sessions_target,
+    )
+    regularity_previous = _compute_period_regularity_score(
+        daily_aggregates=daily_aggregates,
+        start_date=period_previous_start,
+        end_date=period_previous_end,
+        sessions_target=sessions_target,
+    )
+
+    volume_change_pct = _variation_pct(current_duration, previous_duration)
+    load_change_pct = _variation_pct(current_load_avg, previous_load_avg)
+    regularity_change_pct = _variation_pct(regularity_current, regularity_previous)
+
+    best_recent_week = max(weekly_trends, key=lambda item: float(item["training_load"]), default=None)
+    if best_recent_week and float(best_recent_week["training_load"]) <= 0:
+        best_recent_week = None
+
+    current_main_sport = _main_sport_for_period(
+        activities=activities,
+        start_date=period_current_start,
+        end_date=today,
+    )
+    if current_main_sport is None:
+        current_main_sport = sport_type or "n/a"
+
+    progression_score = 50.0 + (
+        0.35 * _clamp(volume_change_pct or 0.0, -50.0, 50.0)
+        + 0.35 * _clamp(regularity_change_pct or 0.0, -50.0, 50.0)
+        + 0.30 * _clamp(load_change_pct or 0.0, -50.0, 50.0)
+    )
+    progression_score = round(_clamp(progression_score, 0.0, 100.0), 1)
+
+    performance_sport = _normalize_sport_type(current_main_sport)
+    if performance_sport in TRAIL_LIKE_SPORTS:
+        performance = _compute_run_performance(
+            activities=activities,
+            current_start=period_current_start,
+            current_end=today,
+            previous_start=period_previous_start,
+            previous_end=period_previous_end,
+        )
+    elif performance_sport == "ride":
+        performance = _compute_ride_performance(
+            activities=activities,
+            current_start=period_current_start,
+            current_end=today,
+            previous_start=period_previous_start,
+            previous_end=period_previous_end,
+        )
+    else:
+        performance = {
+            "sport_type": performance_sport,
+            "run_records": [],
+            "summary": {
+                "sessions_current_4w": int(current_window["sessions_count"]),
+                "sessions_previous_4w": int(previous_window["sessions_count"]),
+                "distance_current_4w_m": round(float(current_window["distance_m"]), 1),
+                "distance_previous_4w_m": round(float(previous_window["distance_m"]), 1),
+            },
+        }
+
+    consecutive_training_weeks = 0
+    for week in reversed(weekly_trends):
+        if int(week["sessions_count"]) > 0:
+            consecutive_training_weeks += 1
+        else:
+            break
+
+    weeks_above_target = len([week for week in weekly_trends if int(week["sessions_count"]) >= sessions_target])
+    stable_weeks = 0
+    comparable_weeks = 0
+    for index in range(1, len(weekly_trends)):
+        previous_load = float(weekly_trends[index - 1]["training_load"])
+        current_load = float(weekly_trends[index]["training_load"])
+        if previous_load <= 0:
+            continue
+        comparable_weeks += 1
+        if abs(current_load - previous_load) / previous_load <= 0.20:
+            stable_weeks += 1
+    stable_load_ratio = round(stable_weeks / comparable_weeks, 2) if comparable_weeks else 0.0
+
+    longest_active_streak_days = _compute_longest_active_streak(active_dates=set(daily_aggregates.keys()))
+    badges = _build_progression_badges(
+        weekly_trends=weekly_trends,
+        regularity_current=regularity_current,
+        current_duration_4w_sec=current_duration,
+        longest_active_streak_days=longest_active_streak_days,
+        activities=activities,
+        reference_date=today,
+    )
+
+    return {
+        "athlete_id": athlete_id,
+        "sport_filter": sport_type,
+        "weeks": weeks,
+        "sessions_target": sessions_target,
+        "summary": {
+            "volume_4w": {
+                "current_value": round(current_duration, 1),
+                "previous_value": round(previous_duration, 1),
+                "change_pct": volume_change_pct,
+            },
+            "average_load_4w": {
+                "current_value": round(current_load_avg, 2),
+                "previous_value": round(previous_load_avg, 2),
+                "change_pct": load_change_pct,
+            },
+            "regularity_4w": {
+                "current_value": regularity_current,
+                "previous_value": regularity_previous,
+                "change_pct": regularity_change_pct,
+            },
+            "best_recent_week": best_recent_week,
+            "current_main_sport": current_main_sport,
+            "progression_score": progression_score,
+        },
+        "weekly_trends": weekly_trends,
+        "performance": performance,
+        "robustness": {
+            "consecutive_training_weeks": consecutive_training_weeks,
+            "weeks_above_target": weeks_above_target,
+            "stable_load_ratio": stable_load_ratio,
+            "longest_active_streak_days": longest_active_streak_days,
+        },
+        "badges": badges,
     }
 
 

@@ -1,3 +1,5 @@
+from typing import Any
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlmodel import Session
 
@@ -9,6 +11,7 @@ from app.services.goal_service import (
     can_user_access_goal,
     create_goal,
     get_athlete_by_id,
+    get_goal_campaign_summary,
     get_goal_by_id,
     list_goals_for_athlete,
     list_goals_for_user,
@@ -72,6 +75,24 @@ def read_goal(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acces refuse a cet objectif.")
 
     return goal
+
+
+@router.get("/{goal_id}/campaign")
+def read_goal_campaign_summary(
+    goal_id: int,
+    actor_user_id: int = Query(..., description="Utilisateur qui consulte."),
+    session: Session = Depends(get_session),
+) -> dict[str, Any]:
+    try:
+        return get_goal_campaign_summary(
+            session=session,
+            goal_id=goal_id,
+            actor_user_id=actor_user_id,
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except PermissionError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
 
 
 @router.patch("/{goal_id}", response_model=GoalRead)

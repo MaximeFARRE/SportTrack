@@ -1,4 +1,5 @@
 from datetime import date, datetime
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -134,6 +135,73 @@ class DashboardSummaryRead(BaseModel):
     alerts: list[DashboardAlertRead]
     gamification: DashboardGamificationRead
     recent_activities: list[DashboardRecentActivityRead]
+
+
+class ProgressionMetricDeltaRead(BaseModel):
+    current_value: float
+    previous_value: float
+    change_pct: float | None = None
+
+
+class ProgressionWeeklyTrendRead(BaseModel):
+    week_start_date: date
+    sessions_count: int = Field(ge=0)
+    duration_sec: int = Field(ge=0)
+    distance_m: float = Field(ge=0)
+    elevation_gain_m: float = Field(ge=0)
+    training_load: float = Field(ge=0)
+    duration_sec_ma3: float = Field(ge=0)
+    distance_m_ma3: float = Field(ge=0)
+    training_load_ma3: float = Field(ge=0)
+
+
+class ProgressionRunRecordRead(BaseModel):
+    distance_km: float = Field(ge=0)
+    best_estimated_time_sec: int = Field(ge=0)
+    pace_sec_per_km: float = Field(ge=0)
+    activity_name: str
+    activity_date: date
+    source_distance_km: float = Field(ge=0)
+
+
+class ProgressionPerformanceRead(BaseModel):
+    sport_type: str
+    run_records: list[ProgressionRunRecordRead]
+    summary: dict[str, Any]
+
+
+class ProgressionBadgeRead(BaseModel):
+    code: str
+    title: str
+    description: str
+
+
+class ProgressionRobustnessRead(BaseModel):
+    consecutive_training_weeks: int = Field(ge=0)
+    weeks_above_target: int = Field(ge=0)
+    stable_load_ratio: float = Field(ge=0)
+    longest_active_streak_days: int = Field(ge=0)
+
+
+class ProgressionSummaryBlockRead(BaseModel):
+    volume_4w: ProgressionMetricDeltaRead
+    average_load_4w: ProgressionMetricDeltaRead
+    regularity_4w: ProgressionMetricDeltaRead
+    best_recent_week: ProgressionWeeklyTrendRead | None = None
+    current_main_sport: str
+    progression_score: float = Field(ge=0, le=100)
+
+
+class ProgressionSummaryRead(BaseModel):
+    athlete_id: int
+    sport_filter: str | None = None
+    weeks: int = Field(ge=8, le=52)
+    sessions_target: int = Field(ge=1, le=7)
+    summary: ProgressionSummaryBlockRead
+    weekly_trends: list[ProgressionWeeklyTrendRead]
+    performance: ProgressionPerformanceRead
+    robustness: ProgressionRobustnessRead
+    badges: list[ProgressionBadgeRead]
 
 
 class WeeklyComparisonMemberRead(BaseModel):

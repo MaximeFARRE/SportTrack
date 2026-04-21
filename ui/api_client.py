@@ -137,6 +137,23 @@ def weekly_metrics(athlete_id: int, start_date: str | None = None, end_date: str
     )
 
 
+def progression_summary(
+    athlete_id: int,
+    weeks: int = 26,
+    sport_type: str | None = None,
+    sessions_target: int = 3,
+) -> dict[str, Any]:
+    return request_json(
+        "GET",
+        f"/metrics/progression/athletes/{athlete_id}",
+        params={
+            "weeks": weeks,
+            "sport_type": sport_type,
+            "sessions_target": sessions_target,
+        },
+    )
+
+
 def weekly_comparison_all_users(
     actor_user_id: int,
     start_date: str | None = None,
@@ -264,3 +281,7 @@ def create_goal(
 
 def archive_goal(goal_id: int, actor_user_id: int) -> dict[str, Any]:
     return request_json("POST", f"/goals/{goal_id}/archive", params={"actor_user_id": actor_user_id})
+
+
+def goal_campaign_summary(goal_id: int, actor_user_id: int) -> dict[str, Any]:
+    return request_json("GET", f"/goals/{goal_id}/campaign", params={"actor_user_id": actor_user_id})

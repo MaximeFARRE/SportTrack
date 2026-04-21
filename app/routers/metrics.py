@@ -4,9 +4,16 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlmodel import Session
 
 from app.db import get_session
-from app.schemas.metrics import DailyMetricRead, DashboardSummaryRead, WeeklyComparisonRead, WeeklyMetricRead
+from app.schemas.metrics import (
+    DailyMetricRead,
+    DashboardSummaryRead,
+    ProgressionSummaryRead,
+    WeeklyComparisonRead,
+    WeeklyMetricRead,
+)
 from app.services.metrics_service import (
     get_dashboard_summary,
+    get_progression_summary,
     get_weekly_comparison_for_all_connected_users,
     list_daily_metrics,
     list_weekly_metrics,
@@ -80,6 +87,23 @@ def read_dashboard_summary(
         period_days=period_days,
         recent_activities_limit=recent_activities_limit,
         sport_type=sport_type,
+    )
+
+
+@router.get("/progression/athletes/{athlete_id}", response_model=ProgressionSummaryRead)
+def read_progression_summary(
+    athlete_id: int,
+    weeks: int = Query(default=26, ge=8, le=52),
+    sport_type: str | None = Query(default=None),
+    sessions_target: int = Query(default=3, ge=1, le=7),
+    session: Session = Depends(get_session),
+) -> ProgressionSummaryRead:
+    return get_progression_summary(
+        session=session,
+        athlete_id=athlete_id,
+        weeks=weeks,
+        sport_type=sport_type,
+        sessions_target=sessions_target,
     )
 
 
