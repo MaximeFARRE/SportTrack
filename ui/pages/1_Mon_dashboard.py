@@ -175,9 +175,38 @@ def render_recent_trends(weekly_trends: list[dict[str, Any]], trend_summary: dic
         st.info("Pas assez de donnees pour afficher les tendances.")
         return
 
+    trend_rows: list[dict[str, Any]] = []
+    for item in weekly_trends:
+        if isinstance(item, dict):
+            trend_rows.append(item)
+        elif hasattr(item, "model_dump"):
+            trend_rows.append(item.model_dump())
+        else:
+            row = {}
+            for key in ["week_start_date", "duration_sec", "distance_m", "elevation_gain_m", "sessions_count"]:
+                if hasattr(item, key):
+                    row[key] = getattr(item, key)
+            if row:
+                trend_rows.append(row)
+
+    if not trend_rows:
+        st.info("Donnees tendances indisponibles (format non supporte).")
+        return
+
     range_label = st.radio("Fenetre tendances", options=["4 semaines", "8 semaines"], horizontal=True)
     keep_weeks = 4 if range_label == "4 semaines" else 8
-    trend_df = pd.DataFrame(weekly_trends).tail(keep_weeks)
+    trend_df = pd.DataFrame(trend_rows).tail(keep_weeks)
+
+    required_columns = {"week_start_date", "duration_sec", "distance_m", "elevation_gain_m", "sessions_count"}
+    if not required_columns.issubset(set(trend_df.columns)):
+        st.info("Donnees tendances incompletes. Lance un recalcul des metriques.")
+        return
+
+    trend_df = trend_df.dropna(subset=["week_start_date"])
+    if trend_df.empty:
+        st.info("Aucune semaine exploitable pour les tendances.")
+        return
+
     trend_df["distance_km"] = (trend_df["distance_m"] / 1000.0).round(2)
     trend_df["duration_h"] = (trend_df["duration_sec"] / 3600.0).round(2)
     trend_df["week_start_date"] = pd.to_datetime(trend_df["week_start_date"])
@@ -461,7 +490,7 @@ render_fitness_state(dashboard.get("fitness_state", {}))
 render_main_timeline(dashboard.get("load_timeline", []))
 render_sport_breakdown(dashboard.get("sports_breakdown", []))
 render_recent_trends(
-    weekly_trends=dashboard.get("weekly_trends", []),
+    weekly_trends=dashboard.get("weekly_trends", []) or dashboard.get("weekly_metrics", []),
     trend_summary=dashboard.get("trend_summary", {}),
 )
 render_alerts(dashboard.get("alerts", []))
