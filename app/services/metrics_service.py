@@ -428,17 +428,23 @@ def _build_mini_leaderboard(
     end_datetime: datetime,
     sport_type: str | None = None,
 ) -> list[dict[str, Any]]:
-    users_statement = select(User).where(User.is_active == True).order_by(User.display_name.asc(), User.id.asc())
-    users = list(session.exec(users_statement).all())
-    if not users:
-        return []
-
     athletes = list(session.exec(select(Athlete)).all())
     athlete_to_user: dict[int, int] = {}
     for athlete in athletes:
         athlete_to_user[athlete.id] = athlete.user_id
 
     if not athlete_to_user:
+        return []
+
+    user_ids_with_athletes = set(athlete_to_user.values())
+    users_statement = (
+        select(User)
+        .where(User.is_active == True)
+        .where(User.id.in_(list(user_ids_with_athletes)))
+        .order_by(User.display_name.asc(), User.id.asc())
+    )
+    users = list(session.exec(users_statement).all())
+    if not users:
         return []
 
     activities_statement = (
