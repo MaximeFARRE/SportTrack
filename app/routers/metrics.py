@@ -71,6 +71,7 @@ def read_dashboard_summary(
     athlete_id: int,
     period_days: int = Query(default=30, ge=1, le=365),
     recent_activities_limit: int = Query(default=5, ge=1, le=20),
+    sport_type: str | None = Query(default=None),
     session: Session = Depends(get_session),
 ) -> DashboardSummaryRead:
     return get_dashboard_summary(
@@ -78,6 +79,7 @@ def read_dashboard_summary(
         athlete_id=athlete_id,
         period_days=period_days,
         recent_activities_limit=recent_activities_limit,
+        sport_type=sport_type,
     )
 
 

@@ -112,11 +112,20 @@ def read_activity(activity_id: int) -> dict[str, Any]:
     return request_json("GET", f"/activities/{activity_id}")
 
 
-def dashboard_summary(athlete_id: int, period_days: int = 30, recent_activities_limit: int = 5) -> dict[str, Any]:
+def dashboard_summary(
+    athlete_id: int,
+    period_days: int = 30,
+    recent_activities_limit: int = 5,
+    sport_type: str | None = None,
+) -> dict[str, Any]:
     return request_json(
         "GET",
         f"/metrics/dashboard/athletes/{athlete_id}",
-        params={"period_days": period_days, "recent_activities_limit": recent_activities_limit},
+        params={
+            "period_days": period_days,
+            "recent_activities_limit": recent_activities_limit,
+            "sport_type": sport_type,
+        },
     )
 
 
