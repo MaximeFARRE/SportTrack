@@ -1,312 +1,218 @@
 # SportTrack
 
-SportTrack est une application de suivi d'entraînement multi-utilisateur.
+![Python](https://img.shields.io/badge/Python-3.11%2B-blue?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.100%2B-009688?logo=fastapi&logoColor=white)
+![Streamlit](https://img.shields.io/badge/Streamlit-1.30%2B-FF4B4B?logo=streamlit&logoColor=white)
+![SQLite](https://img.shields.io/badge/Database-SQLite%20%2F%20PostgreSQL-003B57?logo=sqlite&logoColor=white)
+![License](https://img.shields.io/badge/License-MIT-green)
+![Tests](https://img.shields.io/badge/Tests-pytest-yellow?logo=pytest&logoColor=white)
 
-L'objectif est de centraliser les activités sportives provenant principalement de Strava, de les stocker dans une base de données, puis de générer des dashboards individuels et de groupe.
-
-Le projet est conçu pour fonctionner d'abord en local, puis être facilement déployé sur le web.
-
----
-
-# Objectifs du projet
-
-SportTrack doit permettre de :
-
-* connecter un ou plusieurs comptes Strava
-* importer automatiquement les activités sportives
-* stocker toutes les données dans une base locale
-* suivre l'évolution des entraînements dans le temps
-* comparer plusieurs personnes dans des groupes
-* détecter des tendances, des risques de surcharge ou de blessure
-* afficher des dashboards et des graphiques simples
-* préparer plus tard des fonctionnalités avancées de prédiction
-
-Exemples de métriques visées :
-
-* volume journalier et hebdomadaire
-* nombre de séances
-* distance totale
-* durée totale
-* dénivelé positif
-* répartition par sport
-* charge d'entraînement
-* charge 7 jours / 28 jours
-* progression récente
-* comparaison entre plusieurs personnes
+A multi-user sports training tracker that imports activities from Strava, computes performance metrics, and displays individual and group dashboards.
 
 ---
 
-# Stack technique
+## Project context
 
-## Backend
-
-* Python
-* FastAPI
-* SQLModel
-* SQLite au début
-* PostgreSQL plus tard
-
-## Frontend
-
-* Streamlit
-* Plotly
-
-## Synchronisation
-
-* API Strava
-* OAuth2 Strava
-* Synchronisation manuelle au début
-* Webhooks Strava plus tard
+SportTrack was built as a personal project to practice full-stack Python development. The goal was to design a realistic, multi-user application from scratch — including API design, OAuth integration, data modeling, metric computation, and a functional UI — without relying on any existing sports platform's built-in analytics.
 
 ---
 
-# Architecture générale
+## Features
 
-```text
-Frontend Streamlit
-        │
-        ▼
-Backend FastAPI
-        │
-        ├── Authentification
-        ├── Synchronisation Strava
-        ├── Gestion des activités
-        ├── Calcul des métriques
-        ├── Gestion des groupes
-        └── Prédictions futures
-        │
-        ▼
-Base de données SQLite / PostgreSQL
-```
+- **Strava integration** — OAuth2 login, activity import, automatic token refresh
+- **Individual dashboard** — daily and weekly training load, volume, distance, elevation
+- **Training load metrics** — ATL / CTL computation with sport-specific intensity coefficients
+- **Progression tracking** — week-over-week comparison and trend visualization
+- **Group comparison** — create groups, compare athletes side by side
+- **Goal tracking** — define and monitor personal goals per sport type
+- **Gamification** — badges and milestones based on activity history
+- **REST API** — full FastAPI backend with Swagger UI at `/docs`
 
 ---
 
-# Structure du projet
+## Tech stack
 
-```text
-SportTrack/
-│
-├── app/
-│   ├── main.py
-│   ├── config.py
-│   ├── db.py
-│   ├── security.py
-│   │
-│   ├── models/
-│   │   ├── user.py
-│   │   ├── athlete.py
-│   │   ├── activity.py
-│   │   ├── lap.py
-│   │   ├── group.py
-│   │   ├── metric_daily.py
-│   │   ├── metric_weekly.py
-│   │   └── goal.py
-│   │
-│   ├── schemas/
-│   │   ├── user.py
-│   │   ├── athlete.py
-│   │   ├── activity.py
-│   │   ├── group.py
-│   │   ├── metrics.py
-│   │   └── goal.py
-│   │
-│   ├── routers/
-│   │   ├── auth.py
-│   │   ├── users.py
-│   │   ├── athletes.py
-│   │   ├── activities.py
-│   │   ├── groups.py
-│   │   ├── metrics.py
-│   │   ├── goals.py
-│   │   └── sync.py
-│   │
-│   ├── services/
-│   │   ├── auth_service.py
-│   │   ├── strava_service.py
-│   │   ├── sync_service.py
-│   │   ├── activity_service.py
-│   │   ├── metrics_service.py
-│   │   ├── risk_service.py
-│   │   ├── prediction_service.py
-│   │   ├── group_service.py
-│   │   └── goal_service.py
-│   │
-│   └── utils/
-│       ├── dates.py
-│       ├── sports.py
-│       └── conversions.py
-│
-├── ui/
-│   ├── Home.py
-│   ├── login.py
-│   └── pages/
-│       ├── 1_Mon_dashboard.py
-│       ├── 2_Mes_activites.py
-│       ├── 3_Analyse_seance.py
-│       ├── 4_Progression.py
-│       ├── 5_Groupes.py
-│       ├── 6_Comparaison.py
-│       └── 7_Objectifs.py
-│
-├── scripts/
-│   ├── init_db.py
-│   ├── import_strava_history.py
-│   ├── sync_recent.py
-│   └── recompute_metrics.py
-│
-├── tests/
-├── data/
-├── .env
-├── requirements.txt
-├── README.md
-└── run.py
-```
+| Layer | Technology |
+|---|---|
+| Backend API | FastAPI, SQLModel, Pydantic |
+| Database | SQLite (local) / PostgreSQL (production) |
+| Frontend | Streamlit, Plotly |
+| Auth | bcrypt, Strava OAuth2 |
+| Testing | pytest, FastAPI TestClient |
 
 ---
 
-# Modèle de données actuel
+## Installation
 
-## User
-
-Représente un compte utilisateur dans SportTrack.
-
-Champs principaux :
-
-* id
-* email
-* password_hash
-* display_name
-* is_active
-* created_at
-
-## Athlete
-
-Représente un profil sportif connecté à une source externe, principalement Strava.
-
-Champs principaux :
-
-* id
-* user_id
-* provider
-* provider_athlete_id
-* firstname
-* lastname
-* access_token
-* refresh_token
-* token_expires_at
-* last_sync_at
-
-## Activity
-
-Représente une activité sportive importée.
-
-Champs principaux :
-
-* id
-* athlete_id
-* provider_activity_id
-* sport_type
-* start_date
-* duration_sec
-* distance_m
-* elevation_gain_m
-* average_speed
-* average_heartrate
-* average_power
-
----
-
-# Principes importants du projet
-
-## Multi-utilisateur
-
-Le projet doit fonctionner pour 1 à 10 personnes ou plus.
-
-Toutes les données sportives sont liées à un `athlete_id`.
-Toutes les permissions sont liées à un `user_id`.
-Toutes les comparaisons sont liées à un `group_id`.
-
-Il ne faut jamais coder la logique comme si un seul utilisateur existait.
-
-Bon exemple :
-
-```python
-get_activities_for_athlete(athlete_id)
-get_weekly_metrics_for_group(group_id)
-```
-
-Mauvais exemple :
-
-```python
-get_my_activities()
-```
-
----
-
-# Vision des futures fonctionnalités
-
-## V1
-
-* création de compte
-* connexion Strava
-* import des activités
-* dashboard individuel
-* historique des activités
-* groupes et comparaison simple
-
-## V2
-
-* synchronisation automatique
-* calcul des charges
-* objectifs sportifs
-* alertes surcharge
-* statistiques avancées
-
-## V3
-
-* prédiction de forme
-* détection de risque de blessure
-* estimation de temps de course
-* suggestions automatiques d'entraînement
-
----
-
-# Commandes utiles
-
-## Installer les dépendances
+**Prerequisites:** Python 3.11+, a [Strava API application](https://www.strava.com/settings/api)
 
 ```bash
+# Clone the repository
+git clone https://github.com/MaximeFARRE/SportTrack.git
+cd SportTrack
+
+# Create and activate a virtual environment
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+
+# Install dependencies
 pip install -r requirements.txt
-```
 
-## Initialiser la base de données
+# Configure environment variables
+cp .env.example .env
+# Edit .env with your Strava credentials and database URL
 
-```bash
+# Initialize the database
 python -m scripts.init_db
 ```
 
-## Lancer le backend FastAPI
+---
+
+## Usage
+
+**Start the backend API**
 
 ```bash
 python run.py
 ```
 
-Puis ouvrir :
+API available at `http://127.0.0.1:8000`
+Interactive docs at `http://127.0.0.1:8000/docs`
 
-```text
-http://127.0.0.1:8000
-http://127.0.0.1:8000/docs
+**Start the Streamlit frontend** (in a separate terminal)
+
+```bash
+streamlit run ui/Home.py
+```
+
+UI available at `http://localhost:8501`
+
+**Sync Strava activities manually**
+
+```bash
+python -m scripts.sync_recent --athlete-id <id> --per-page 50
+```
+
+**Recompute all metrics**
+
+```bash
+python -m scripts.recompute_metrics --athlete-id <id>
+```
+
+**Run tests**
+
+```bash
+pytest
 ```
 
 ---
 
-# Règles de développement
+## Repository structure
 
-* toujours séparer les modèles, les services et les routes
-* ne jamais mettre de logique métier directement dans Streamlit
-* ne jamais appeler Strava directement depuis l'interface
-* toutes les métriques doivent être calculées dans `services/metrics_service.py`
-* toutes les synchronisations doivent passer par `services/sync_service.py`
-* tous les accès aux données doivent passer par les modèles SQLModel
+```
+SportTrack/
+├── app/
+│   ├── main.py              # FastAPI app entry point
+│   ├── config.py            # Settings loaded from .env / Streamlit secrets
+│   ├── db.py                # Database engine and session management
+│   ├── models/              # SQLModel table definitions
+│   │   ├── user.py
+│   │   ├── athlete.py
+│   │   ├── activity.py
+│   │   ├── group.py
+│   │   ├── metric_daily.py
+│   │   ├── metric_weekly.py
+│   │   └── goal.py
+│   ├── schemas/             # Pydantic request/response schemas
+│   ├── routers/             # FastAPI route handlers
+│   │   ├── auth.py
+│   │   ├── users.py
+│   │   ├── athletes.py
+│   │   ├── activities.py
+│   │   ├── sync.py
+│   │   ├── metrics.py
+│   │   ├── groups.py
+│   │   └── goals.py
+│   └── services/            # Business logic
+│       ├── auth_service.py
+│       ├── strava_service.py
+│       ├── sync_service.py
+│       ├── activity_service.py
+│       ├── metrics_service.py   # DB-bound metric queries
+│       ├── metrics_compute.py   # Pure computation functions
+│       ├── _sport_helpers.py    # Shared sport-type utilities
+│       ├── group_service.py
+│       ├── goal_service.py
+│       └── gamification_service.py
+│
+├── ui/
+│   ├── Home.py              # Streamlit app entry point
+│   ├── login.py             # Login/register page
+│   ├── api_client.py        # HTTP client wrapping the FastAPI backend
+│   ├── session.py           # Session state helpers
+│   └── pages/
+│       ├── 0_Login.py
+│       ├── 1_Dashboard.py
+│       ├── 4_Progression.py
+│       ├── 6_Comparison.py
+│       └── 7_Goals.py
+│
+├── scripts/
+│   ├── init_db.py               # Create tables
+│   ├── import_strava_history.py # Bulk import past activities
+│   ├── sync_recent.py           # Sync recent activities for one athlete
+│   └── recompute_metrics.py     # Recompute all metrics from scratch
+│
+├── tests/                   # pytest test suite
+├── data/                    # Local database files (gitignored)
+├── .env.example             # Environment variable template
+├── .streamlit/
+│   └── secrets.example.toml # Streamlit secrets template
+├── requirements.txt
+├── run.py                   # Start uvicorn server
+└── pytest.ini
+```
 
 ---
+
+## Configuration
+
+Copy `.env.example` to `.env` and fill in your values:
+
+```env
+DATABASE_URL=sqlite:///./sporttrack.db
+STRAVA_CLIENT_ID=your_client_id
+STRAVA_CLIENT_SECRET=your_client_secret
+STRAVA_REDIRECT_URI=http://localhost:18501
+```
+
+For Streamlit Cloud deployment, use `.streamlit/secrets.example.toml` as a reference.
+
+---
+
+## Limitations
+
+- Strava sync is manual only (no webhooks yet)
+- No built-in user invitation flow — users must be created via the registration endpoint
+- Designed for small groups (1–20 athletes); not optimized for large-scale deployments
+- PostgreSQL support is configured but not production-tested
+
+---
+
+## Screenshots
+
+*Coming soon.*
+
+---
+
+## Contributors
+
+| Name | GitHub |
+|---|---|
+| Maxime Farré | [@MaximeFARRE](https://github.com/MaximeFARRE) |
+
+---
+
+## License
+
+This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
