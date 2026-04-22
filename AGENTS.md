@@ -1,133 +1,114 @@
-# AGENTS.md
+# AGENTS.md — Operating Manual
 
-## Project
-
-SportTrack is a multi-user sports training tracker.
-
-The app imports activities from Strava, stores them in a local database, computes metrics, and displays personal and group dashboards.
-
-Current stack:
-
-* FastAPI
-* SQLModel
-* SQLite
-* Streamlit
-* Plotly
-
-The project is designed to run locally first, then later be deployable as a web app.
+SportTrack is a multi-user sports training tracker. It imports Strava activities, computes training metrics, and serves individual and group dashboards through a FastAPI backend and a Streamlit frontend.
 
 ---
 
-## Main Architecture Rules
+## Commands
 
-Always keep the project separated into 4 layers:
+```bash
+# Install dependencies
+pip install -r requirements.txt
 
-1. Models / database
-2. Services / business logic
-3. Routers / API
-4. UI / Streamlit pages
+# Initialize the database (first run only)
+python -m scripts.init_db
 
-Never mix those responsibilities.
+# Start the API (http://127.0.0.1:8000 — docs at /docs)
+python run.py
 
-Examples:
+# Start the UI (http://localhost:18501)
+python -m streamlit run ui/Home.py --server.port 18501
 
-* database tables -> `app/models/`
-* calculations -> `app/services/metrics_service.py`
-* Strava sync -> `app/services/strava_service.py`
-* API endpoints -> `app/routers/`
-* visual interface -> `ui/`
+# Run tests
+pytest
 
----
+# Sync recent Strava activities for one athlete
+python -m scripts.sync_recent --athlete-id <id> [--per-page 30]
 
-## Important Rules
-
-* Never put business logic directly inside Streamlit pages.
-* Never call the Strava API directly from the UI.
-* Always use services as an intermediate layer.
-* Every sports-related entity must be linked to an `athlete_id`.
-* Every permission/authentication feature must be linked to a `user_id`.
-* Every comparison between multiple users must be linked to a `group_id`.
-
-Good:
-
-```python
-get_activities_for_athlete(athlete_id)
-compute_weekly_metrics_for_group(group_id)
+# Recompute all metrics for one athlete
+python -m scripts.recompute_metrics --athlete-id <id> [--start-date YYYY-MM-DD]
 ```
 
-Bad:
-
-```python
-get_my_activities()
-compute_dashboard()
-```
+No linter or formatter is configured. Do not add one without being asked.
 
 ---
 
-## Existing Core Models
+## Architecture
 
-Current main models:
+The project has four strict layers. Never cross them.
 
-* `User`
-* `Athlete`
-* `Activity`
+| Layer | Location | Responsibility |
+|---|---|---|
+| Models | `app/models/` | SQLModel table definitions only |
+| Services | `app/services/` | All business logic and DB queries |
+| Routers | `app/routers/` | HTTP interface, input validation, error codes |
+| UI | `ui/` | Presentation and user interaction only |
 
-Future models:
+**Critical rule:** `ui/` must never import from `app.*`. The UI talks to the backend exclusively via `ui/api_client.py` (HTTP).
 
-* `Lap`
-* `Group`
-* `DailyMetric`
-* `WeeklyMetric`
-* `Goal`
+### Services layout
 
----
+| File | Purpose |
+|---|---|
+| `metrics_compute.py` | Pure functions — no `Session`, no DB calls |
+| `metrics_service.py` | DB-bound metric queries — imports from `metrics_compute` |
+| `_sport_helpers.py` | Shared sport-type utilities used across services |
+| `strava_service.py` | Strava OAuth and API calls |
+| `sync_service.py` | Orchestrates activity import |
+| `auth_service.py` | User creation, login, password hashing |
 
-## Coding Style
+### Database access
 
-* Keep the code simple and readable.
-* Prefer explicit functions over complex abstractions.
-* Use small files and clear names.
-* Add comments only when useful.
-* Avoid unnecessary optimization.
-* Write code that is easy to extend later.
+- In routers: use `get_session` (plain generator, compatible with `Depends`)
+- In scripts: use `get_db()` (context manager)
+- Never call `engine` directly from outside `app/db.py`
 
-Prefer:
+### Data ownership rules
 
-```python
-def compute_training_load(activity):
-    ...
-```
-
-Instead of large classes or overly generic patterns.
-
----
-
-## Development Order
-
-Always build features in this order:
-
-1. Model
-2. Service
-3. Router
-4. UI
-
-Example:
-
-1. create `Activity` model
-2. add `activity_service.py`
-3. expose `/activities` route
-4. display activities in Streamlit
+- Every activity or metric is owned by an `athlete_id`
+- Every permission check is based on a `user_id`
+- Every cross-user comparison is scoped to a `group_id`
 
 ---
 
-## Current Priority
+## Models
 
-Current development priorities:
+All models are implemented and active:
 
-1. User creation and authentication
-2. Strava OAuth connection
-3. Activity import
-4. Dashboard metrics
-5. Group comparison
+`User` · `Athlete` · `Activity` · `Group` · `GroupMember` · `DailyMetric` · `WeeklyMetric` · `Goal`
 
-Do not implement advanced prediction or AI features before the base flow works correctly.
+---
+
+## Engineering Rules
+
+- Make minimal, targeted changes. Do not refactor adjacent code.
+- Do not add abstraction layers unless explicitly requested.
+- Do not create new files unless the task clearly requires it.
+- Do not duplicate logic that already exists in a service.
+- Keep pure computation functions (no DB) in `metrics_compute.py`.
+- Keep shared sport-type helpers in `_sport_helpers.py`.
+- Follow existing naming conventions exactly.
+- Do not add comments that restate what the code already says.
+
+---
+
+## Git Workflow
+
+- Never commit directly to `main`.
+- Use branches: `feat/`, `fix/`, `chore/`, `docs/`, `test/`
+- Commit format: `type: short description` (Conventional Commits)
+- One concern per branch. Do not mix unrelated changes.
+- Before committing: review the diff, check for unintended changes.
+
+---
+
+## Definition of Done
+
+Before marking a task complete:
+
+- [ ] `pytest` passes with no failures
+- [ ] No import errors on `python -m app.main` or the affected module
+- [ ] No untracked files accidentally left behind
+- [ ] No `__pycache__` or `.db` files staged
+- [ ] Diff reviewed — no unrelated changes included
+- [ ] If behavior or setup changed: README or relevant doc updated
