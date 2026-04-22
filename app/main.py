@@ -40,7 +40,7 @@ app.include_router(goals_router)
 @app.get("/")
 def read_root() -> dict:
     return {
-        "message": "Bienvenue sur SportTrack",
+        "message": "Welcome to SportTrack",
         "version": settings.app_version
     }
 
