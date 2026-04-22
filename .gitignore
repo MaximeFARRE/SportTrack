@@ -21,3 +21,15 @@ venv/
 # OS/editor artifacts
 .DS_Store
 Thumbs.db
+.idea/
+.vscode/
+
+# pytest temporary files (created at repo root by some pytest versions)
+pytest-cache-files-*
+
+# data directory databases
+data/*.db
+data/*.db-journal
+
+# screenshots (local only, committed manually)
+screenshots/
