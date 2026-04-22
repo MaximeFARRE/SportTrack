@@ -8,9 +8,9 @@ from app.services.sync_service import sync_recent_strava_activities
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Synchroniser les activites recentes d'un athlete Strava.")
-    parser.add_argument("--athlete-id", type=int, required=True, help="Identifiant athlete a synchroniser.")
-    parser.add_argument("--per-page", type=int, default=30, help="Nombre max d'activites a recuperer.")
+    parser = argparse.ArgumentParser(description="Sync recent Strava activities for a given athlete.")
+    parser.add_argument("--athlete-id", type=int, required=True, help="ID of the athlete to sync.")
+    parser.add_argument("--per-page", type=int, default=30, help="Maximum number of activities to fetch.")
     return parser.parse_args()
 
 
