@@ -1,10 +1,10 @@
-from contextlib import contextmanager
 import logging
 import os
+import threading
+from contextlib import contextmanager
 from pathlib import Path
 import tempfile
 
-import streamlit as st
 from sqlalchemy.exc import OperationalError
 from sqlmodel import Session, SQLModel, create_engine
 
@@ -30,6 +30,9 @@ TRANSIENT_DB_CONNECTION_ERROR_MARKERS = (
     "connection reset by peer",
 )
 
+_ENGINE = None
+_ENGINE_LOCK = threading.Lock()
+
 
 def _is_sqlite_io_error(exc: OperationalError) -> bool:
     message = str(exc).lower()
@@ -51,8 +54,7 @@ def _build_fallback_sqlite_url() -> str:
     return f"sqlite:///{db_path.as_posix()}"
 
 
-@st.cache_resource
-def _get_engine():
+def _build_engine():
     from app.config import settings
 
     database_url = settings.database_url
@@ -70,7 +72,7 @@ def _get_engine():
             raise
 
         logging.warning(
-            "Primary SQLite database failed with I/O error (%s). Retrying with fallback database: %s",
+            "Primary SQLite database failed with I/O error (%s). Retrying with fallback: %s",
             exc,
             fallback_url,
         )
@@ -79,27 +81,45 @@ def _get_engine():
         return fallback_engine
 
 
+def _get_engine():
+    global _ENGINE
+    if _ENGINE is None:
+        with _ENGINE_LOCK:
+            if _ENGINE is None:
+                _ENGINE = _build_engine()
+    return _ENGINE
+
+
+def create_db_and_tables() -> None:
+    _get_engine()
+
+
 def is_transient_db_connection_error(exc: Exception) -> bool:
     message = str(exc).lower()
     return any(marker in message for marker in TRANSIENT_DB_CONNECTION_ERROR_MARKERS)
 
 
 def recycle_db_engine() -> None:
-    try:
-        _get_engine().dispose()
-    except Exception:
-        pass
+    global _ENGINE
+    with _ENGINE_LOCK:
+        if _ENGINE is not None:
+            try:
+                _ENGINE.dispose()
+            except Exception:
+                pass
+            _ENGINE = None
 
-    clear_fn = getattr(_get_engine, "clear", None)
-    if callable(clear_fn):
-        try:
-            clear_fn()
-        except Exception:
-            pass
+
+def get_session():
+    """FastAPI dependency: yields a DB session, closes it on exit."""
+    engine = _get_engine()
+    with Session(engine) as session:
+        yield session
 
 
 @contextmanager
 def get_db():
+    """Context manager for non-FastAPI callers (scripts, tests)."""
     engine = _get_engine()
     with Session(engine) as session:
         yield session
