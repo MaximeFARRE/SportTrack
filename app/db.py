@@ -98,6 +98,10 @@ def recycle_db_engine() -> None:
             pass
 
 
+def create_db_and_tables() -> None:
+    _get_engine()
+
+
 @contextmanager
 def get_db():
     engine = _get_engine()

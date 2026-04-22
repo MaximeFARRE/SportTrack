@@ -21,6 +21,14 @@ def _get(key: str, default: str = "") -> str:
 
 class _Settings:
     @property
+    def app_name(self) -> str:
+        return _get("APP_NAME", "SportTrack")
+
+    @property
+    def app_version(self) -> str:
+        return _get("APP_VERSION", "0.1.0")
+
+    @property
     def database_url(self) -> str:
         return _get("DATABASE_URL", "sqlite:///./sporttrack.db")
 
