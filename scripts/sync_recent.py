@@ -1,9 +1,7 @@
 import argparse
 import json
 
-from sqlmodel import Session
-
-from app.db import engine
+from app.db import get_db
 from app.services.sync_service import sync_recent_strava_activities
 
 
@@ -17,7 +15,7 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
 
-    with Session(engine) as session:
+    with get_db() as session:
         result = sync_recent_strava_activities(
             session=session,
             athlete_id=args.athlete_id,
