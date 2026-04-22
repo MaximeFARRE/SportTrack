@@ -1,4 +1,4 @@
-import hashlib
+import bcrypt
 from datetime import UTC, datetime
 from typing import Optional
 
@@ -10,11 +10,14 @@ from app.schemas.user import UserCreate
 
 
 def hash_password(password: str) -> str:
-    return hashlib.sha256(password.encode("utf-8")).hexdigest()
+    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
 
 def verify_password(password: str, password_hash: str) -> bool:
-    return hash_password(password) == password_hash
+    try:
+        return bcrypt.checkpw(password.encode("utf-8"), password_hash.encode("utf-8"))
+    except Exception:
+        return False
 
 
 def get_user_by_email(session: Session, email: str) -> Optional[User]:
