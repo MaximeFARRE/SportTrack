@@ -9,6 +9,13 @@ from app.models import Activity, Athlete, Goal, User
 from app.services.gamification_service import build_personal_gamification
 from app.schemas.goal import GoalCreate, GoalUpdate
 from app.services.metrics_service import get_dashboard_summary
+from app.services._sport_helpers import (
+    SPORT_COEFFICIENTS,
+    _activity_date,
+    _activity_load,
+    _normalize_sport_type,
+    _sport_matches,
+)
 
 
 GOAL_TYPES = {
@@ -20,47 +27,6 @@ GOAL_TYPES = {
     "group_challenge",
     "generic",
 }
-
-SPORT_COEFFICIENTS = {
-    "run": 1.0,
-    "trailrun": 1.1,
-    "ride": 0.8,
-    "swim": 0.9,
-    "workout": 0.7,
-}
-
-
-def _safe_utc_datetime(value: datetime) -> datetime:
-    if value.tzinfo is None:
-        return value.replace(tzinfo=UTC)
-    return value.astimezone(UTC)
-
-
-def _activity_date(activity: Activity) -> date:
-    return _safe_utc_datetime(activity.start_date).date()
-
-
-def _normalize_sport_type(sport_type: str | None) -> str:
-    if not sport_type:
-        return "unknown"
-    normalized = sport_type.strip().lower().replace(" ", "")
-    if "trail" in normalized:
-        return "trailrun"
-    if normalized in {"run", "running"}:
-        return "run"
-    if normalized in {"ride", "virtualride", "ebikeride", "bike", "cycling"}:
-        return "ride"
-    if normalized in {"swim", "swimming"}:
-        return "swim"
-    if normalized in {"workout", "strengthtraining", "weighttraining", "gym"}:
-        return "workout"
-    return normalized
-
-
-def _sport_matches(activity: Activity, goal_sport_type: str | None) -> bool:
-    if not goal_sport_type:
-        return True
-    return _normalize_sport_type(activity.sport_type) == _normalize_sport_type(goal_sport_type)
 
 
 def _to_float(value: Any, default: float = 0.0) -> float:
@@ -227,34 +193,6 @@ def _fetch_activities_for_athlete(
         .order_by(Activity.start_date.desc())
     )
     return list(session.exec(statement).all())
-
-
-def _intensity_coefficient(activity: Activity) -> float:
-    avg_hr = float(activity.average_heartrate or 0.0)
-    max_hr = float(activity.max_heartrate or 0.0)
-    if avg_hr <= 0 or max_hr <= 0 or avg_hr > max_hr:
-        return 1.0
-    ratio = avg_hr / max_hr
-    if ratio < 0.70:
-        return 0.75
-    if ratio < 0.78:
-        return 0.85
-    if ratio < 0.86:
-        return 1.00
-    if ratio < 0.92:
-        return 1.15
-    return 1.30
-
-
-def _activity_load(activity: Activity) -> float:
-    duration_min = max(float(activity.duration_sec), 0.0) / 60.0
-    sport_coef = SPORT_COEFFICIENTS.get(_normalize_sport_type(activity.sport_type), 1.0)
-    intensity_coef = _intensity_coefficient(activity)
-    elevation_coef = 1.0
-    if _normalize_sport_type(activity.sport_type) in {"run", "trailrun"}:
-        elevation_coef += (max(float(activity.elevation_gain_m or 0.0), 0.0) / 1000.0) * 0.20
-        elevation_coef = min(elevation_coef, 1.35)
-    return round(duration_min * sport_coef * intensity_coef * elevation_coef, 2)
 
 
 def _goal_target_metric(config: dict[str, Any], goal: Goal) -> tuple[str, float]:
