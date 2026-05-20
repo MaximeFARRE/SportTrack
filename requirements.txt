@@ -21,5 +21,8 @@ python-jose[cryptography]
 # HTTP client (used by Strava service and test client)
 httpx
 
+# Supabase Python client (service-role operations: zone upsert, etc.)
+supabase
+
 # Testing
 pytest
