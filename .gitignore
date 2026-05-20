@@ -33,3 +33,11 @@ data/*.db-journal
 
 # screenshots (local only, committed manually)
 screenshots/
+
+# Node / Next.js (web/)
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+next-env.d.ts
+.vercel/
