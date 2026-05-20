@@ -16,6 +16,7 @@ plotly
 
 # Security
 bcrypt
+python-jose[cryptography]
 
 # HTTP client (used by Strava service and test client)
 httpx

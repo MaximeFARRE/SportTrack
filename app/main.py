@@ -2,6 +2,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.db import create_db_and_tables
@@ -10,6 +11,7 @@ from app.routers.athletes import router as athletes_router
 from app.routers.auth import router as auth_router
 from app.routers.goals import router as goals_router
 from app.routers.groups import router as groups_router
+from app.routers.me import router as me_router
 from app.routers.metrics import router as metrics_router
 from app.routers.sync import router as sync_router
 from app.routers.users import router as users_router
@@ -27,6 +29,18 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[settings.web_base_url],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# New Supabase-authenticated routes.
+app.include_router(me_router)
+
+# Legacy routes — to be migrated in Phase 2 (still use bcrypt auth).
 app.include_router(auth_router)
 app.include_router(users_router)
 app.include_router(athletes_router)
