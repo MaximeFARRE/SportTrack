@@ -32,7 +32,9 @@ export default function LoginPage() {
             ou
           </span>
         </div>
-        <GoogleButton mode="login" />
+        <Suspense>
+          <GoogleButton mode="login" />
+        </Suspense>
       </CardContent>
       <CardFooter className="text-sm text-muted-foreground">
         Pas encore de compte ?{" "}

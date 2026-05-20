@@ -45,12 +45,14 @@ export function TopBar({ email, displayName }: { email: string; displayName: str
     <header className="flex h-14 items-center justify-between border-b bg-card px-4">
       <div className="flex items-center gap-3">
         <Sheet open={open} onOpenChange={setOpen}>
-          <SheetTrigger asChild>
-            <Button variant="ghost" size="icon" className="md:hidden">
-              <Menu className="h-5 w-5" />
-              <span className="sr-only">Ouvrir le menu</span>
-            </Button>
-          </SheetTrigger>
+          <SheetTrigger
+            render={
+              <Button variant="ghost" size="icon" className="md:hidden">
+                <Menu className="h-5 w-5" />
+                <span className="sr-only">Ouvrir le menu</span>
+              </Button>
+            }
+          />
           <SheetContent side="left" className="w-64 p-0">
             <SheetHeader className="border-b px-4 py-4">
               <SheetTitle className="flex items-center gap-2">
@@ -87,14 +89,16 @@ export function TopBar({ email, displayName }: { email: string; displayName: str
       </div>
 
       <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" className="h-9 gap-2 px-2">
-            <Avatar className="h-7 w-7">
-              <AvatarFallback className="text-xs">{initials}</AvatarFallback>
-            </Avatar>
-            <span className="hidden text-sm sm:inline">{displayName ?? email}</span>
-          </Button>
-        </DropdownMenuTrigger>
+        <DropdownMenuTrigger
+          render={
+            <Button variant="ghost" className="h-9 gap-2 px-2">
+              <Avatar className="h-7 w-7">
+                <AvatarFallback className="text-xs">{initials}</AvatarFallback>
+              </Avatar>
+              <span className="hidden text-sm sm:inline">{displayName ?? email}</span>
+            </Button>
+          }
+        />
         <DropdownMenuContent align="end" className="w-56">
           <DropdownMenuLabel className="font-normal">
             <div className="flex flex-col">
@@ -103,14 +107,10 @@ export function TopBar({ email, displayName }: { email: string; displayName: str
             </div>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem asChild>
-            <Link href="/profile">Profil</Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link href="/connections">Connexions</Link>
-          </DropdownMenuItem>
+          <DropdownMenuItem render={<Link href="/profile" />}>Profil</DropdownMenuItem>
+          <DropdownMenuItem render={<Link href="/connections" />}>Connexions</DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={signOut} className="text-destructive focus:text-destructive">
+          <DropdownMenuItem onClick={signOut} variant="destructive">
             <LogOut className="mr-2 h-4 w-4" />
             Se déconnecter
           </DropdownMenuItem>

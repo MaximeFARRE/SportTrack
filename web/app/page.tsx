@@ -8,7 +8,7 @@ import {
   Watch,
 } from "lucide-react"
 
-import { Button } from "@/components/ui/button"
+import { buttonVariants } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 
 const FEATURES = [
@@ -54,12 +54,12 @@ export default function LandingPage() {
             <span>SportTrack</span>
           </Link>
           <div className="flex items-center gap-2">
-            <Button asChild variant="ghost">
-              <Link href="/login">Connexion</Link>
-            </Button>
-            <Button asChild>
-              <Link href="/signup">Créer un compte</Link>
-            </Button>
+            <Link href="/login" className={buttonVariants({ variant: "ghost" })}>
+              Connexion
+            </Link>
+            <Link href="/signup" className={buttonVariants()}>
+              Créer un compte
+            </Link>
           </div>
         </div>
       </header>
@@ -75,12 +75,12 @@ export default function LandingPage() {
             vous aide à planifier vos semaines avec une IA spécialisée.
           </p>
           <div className="flex flex-col gap-2 sm:flex-row">
-            <Button asChild size="lg">
-              <Link href="/signup">Commencer gratuitement</Link>
-            </Button>
-            <Button asChild size="lg" variant="outline">
-              <Link href="/login">J&apos;ai déjà un compte</Link>
-            </Button>
+            <Link href="/signup" className={buttonVariants({ size: "lg" })}>
+              Commencer gratuitement
+            </Link>
+            <Link href="/login" className={buttonVariants({ size: "lg", variant: "outline" })}>
+              J&apos;ai déjà un compte
+            </Link>
           </div>
         </div>
       </section>
