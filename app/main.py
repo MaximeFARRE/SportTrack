@@ -15,6 +15,8 @@ from app.routers.me import router as me_router
 from app.routers.metrics import router as metrics_router
 from app.routers.sync import router as sync_router
 from app.routers.users import router as users_router
+from app.routers.zones import internal_router as zones_internal_router
+from app.routers.zones import router as zones_router
 
 
 @asynccontextmanager
@@ -39,6 +41,8 @@ app.add_middleware(
 
 # New Supabase-authenticated routes.
 app.include_router(me_router)
+app.include_router(zones_router)
+app.include_router(zones_internal_router)
 
 # Legacy routes — to be migrated in Phase 2 (still use bcrypt auth).
 app.include_router(auth_router)
