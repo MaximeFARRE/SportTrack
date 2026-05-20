@@ -1,65 +1,113 @@
-import Image from "next/image";
+import Link from "next/link"
+import {
+  Activity,
+  HeartPulse,
+  LineChart,
+  ShieldAlert,
+  Sparkles,
+  Watch,
+} from "lucide-react"
 
-export default function Home() {
+import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
+
+const FEATURES = [
+  {
+    icon: Watch,
+    title: "Multi-source automatique",
+    body: "Strava, Garmin, Polar, Fitbit, Apple Health — vos données se synchronisent toutes seules.",
+  },
+  {
+    icon: ShieldAlert,
+    title: "Prévention du surentraînement",
+    body: "Détection multivariée intégrant HRV, sommeil, FC repos, ACWR et ressenti.",
+  },
+  {
+    icon: Sparkles,
+    title: "Coach IA intégré",
+    body: "Analyses personnalisées basées sur vos données réelles, jamais inventées.",
+  },
+  {
+    icon: LineChart,
+    title: "CTL / ATL / TSB",
+    body: "Modèle de performance utilisé par les coachs pros, calculé en continu.",
+  },
+  {
+    icon: HeartPulse,
+    title: "Zones FC personnelles",
+    body: "Calculées automatiquement depuis votre FC max, modifiables manuellement.",
+  },
+  {
+    icon: Activity,
+    title: "Tous les sports",
+    body: "Course, vélo, natation, musculation, yoga, sports collectifs — saisie manuelle incluse.",
+  },
+]
+
+export default function LandingPage() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
+    <div className="flex flex-1 flex-col">
+      <header className="border-b">
+        <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-4">
+          <Link href="/" className="flex items-center gap-2 font-semibold">
+            <Activity className="h-5 w-5 text-primary" />
+            <span>SportTrack</span>
+          </Link>
+          <div className="flex items-center gap-2">
+            <Button asChild variant="ghost">
+              <Link href="/login">Connexion</Link>
+            </Button>
+            <Button asChild>
+              <Link href="/signup">Créer un compte</Link>
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      <section className="border-b">
+        <div className="mx-auto flex w-full max-w-4xl flex-col items-center gap-6 px-4 py-16 text-center md:py-24">
+          <h1 className="text-balance text-4xl font-bold tracking-tight md:text-6xl">
+            Le coach qui lit toutes vos données sportives.
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+          <p className="max-w-2xl text-pretty text-lg text-muted-foreground">
+            Suivez vos performances, vos volumes et votre récupération en un seul endroit.
+            SportTrack détecte le surentraînement avant qu&apos;il ne devienne une blessure et
+            vous aide à planifier vos semaines avec une IA spécialisée.
           </p>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Button asChild size="lg">
+              <Link href="/signup">Commencer gratuitement</Link>
+            </Button>
+            <Button asChild size="lg" variant="outline">
+              <Link href="/login">J&apos;ai déjà un compte</Link>
+            </Button>
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+      </section>
+
+      <section className="mx-auto w-full max-w-6xl px-4 py-16">
+        <h2 className="mb-10 text-center text-2xl font-semibold md:text-3xl">
+          Tout ce dont un sportif sérieux a besoin
+        </h2>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {FEATURES.map(({ icon: Icon, title, body }) => (
+            <Card key={title}>
+              <CardContent className="flex flex-col gap-3 p-6">
+                <Icon className="h-6 w-6 text-primary" />
+                <h3 className="text-base font-semibold">{title}</h3>
+                <p className="text-sm text-muted-foreground">{body}</p>
+              </CardContent>
+            </Card>
+          ))}
         </div>
-      </main>
+      </section>
+
+      <footer className="border-t">
+        <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-6 text-sm text-muted-foreground">
+          <span>© {new Date().getFullYear()} SportTrack</span>
+          <span>Construit avec Next.js, Supabase et FastAPI</span>
+        </div>
+      </footer>
     </div>
-  );
+  )
 }
