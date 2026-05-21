@@ -135,6 +135,143 @@ export type Database = {
         }
         Relationships: []
       }
+      provider_connections: {
+        Row: {
+          id: string
+          user_id: string
+          provider: "strava" | "terra"
+          provider_user_id: string
+          access_token: string | null
+          refresh_token: string | null
+          token_expires_at: number | null
+          scopes: string[] | null
+          is_active: boolean
+          last_sync_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          provider: "strava" | "terra"
+          provider_user_id: string
+          access_token?: string | null
+          refresh_token?: string | null
+          token_expires_at?: number | null
+          scopes?: string[] | null
+          is_active?: boolean
+          last_sync_at?: string | null
+        }
+        Update: {
+          access_token?: string | null
+          refresh_token?: string | null
+          token_expires_at?: number | null
+          scopes?: string[] | null
+          is_active?: boolean
+          last_sync_at?: string | null
+        }
+        Relationships: []
+      }
+      activities: {
+        Row: {
+          id: string
+          user_id: string
+          provider: string
+          provider_activity_id: string
+          name: string | null
+          sport_type: string
+          start_date: string
+          timezone: string | null
+          duration_sec: number | null
+          moving_time_sec: number | null
+          distance_m: number | null
+          elevation_gain_m: number | null
+          average_speed: number | null
+          max_speed: number | null
+          average_heartrate: number | null
+          max_heartrate: number | null
+          average_cadence: number | null
+          average_power: number | null
+          calories: number | null
+          raw_data_json: Json | null
+          source: string
+          rpe: number | null
+          feel_score: number | null
+          motivation_score: number | null
+          perceived_recovery: number | null
+          post_session_notes: string | null
+          body_feeling_tags: Json
+          context_tags: Json
+          session_quality_tags: Json
+          temperature_c: number | null
+          weather_condition: string | null
+          time_in_zones_json: Json | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          provider: string
+          provider_activity_id: string
+          name?: string | null
+          sport_type: string
+          start_date: string
+          timezone?: string | null
+          duration_sec?: number | null
+          moving_time_sec?: number | null
+          distance_m?: number | null
+          elevation_gain_m?: number | null
+          average_speed?: number | null
+          max_speed?: number | null
+          average_heartrate?: number | null
+          max_heartrate?: number | null
+          average_cadence?: number | null
+          average_power?: number | null
+          calories?: number | null
+          raw_data_json?: Json | null
+          source?: string
+          rpe?: number | null
+          feel_score?: number | null
+          motivation_score?: number | null
+          perceived_recovery?: number | null
+          post_session_notes?: string | null
+          body_feeling_tags?: Json
+          context_tags?: Json
+          session_quality_tags?: Json
+          temperature_c?: number | null
+          weather_condition?: string | null
+          time_in_zones_json?: Json | null
+        }
+        Update: {
+          name?: string | null
+          sport_type?: string
+          duration_sec?: number | null
+          moving_time_sec?: number | null
+          distance_m?: number | null
+          elevation_gain_m?: number | null
+          average_speed?: number | null
+          max_speed?: number | null
+          average_heartrate?: number | null
+          max_heartrate?: number | null
+          average_cadence?: number | null
+          average_power?: number | null
+          calories?: number | null
+          raw_data_json?: Json | null
+          rpe?: number | null
+          feel_score?: number | null
+          motivation_score?: number | null
+          perceived_recovery?: number | null
+          post_session_notes?: string | null
+          body_feeling_tags?: Json
+          context_tags?: Json
+          session_quality_tags?: Json
+          temperature_c?: number | null
+          weather_condition?: string | null
+          time_in_zones_json?: Json | null
+        }
+        Relationships: []
+      }
     }
     Views: Record<string, never>
     Functions: Record<string, never>

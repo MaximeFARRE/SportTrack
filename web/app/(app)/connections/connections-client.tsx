@@ -134,9 +134,12 @@ export function StravaCard({
             <p className="text-sm text-muted-foreground">
               Connectez votre compte Strava pour importer automatiquement vos activités.
             </p>
-            <Button asChild size="sm">
-              <a href="/connections/strava/connect">Connecter Strava</a>
-            </Button>
+            <a
+              href="/connections/strava/connect"
+              className="inline-flex items-center justify-center rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground shadow hover:bg-primary/90"
+            >
+              Connecter Strava
+            </a>
           </div>
         )}
       </CardContent>
