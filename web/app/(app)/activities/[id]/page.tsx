@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
+import { FeedbackSection } from "@/components/activity/feedback-section"
 
 export const metadata: Metadata = { title: "Détail activité · SportTrack" }
 
@@ -173,41 +174,7 @@ export default async function ActivityDetailPage({
         </Card>
       )}
 
-      {(activity.rpe != null ||
-        activity.feel_score != null ||
-        activity.motivation_score != null ||
-        activity.perceived_recovery != null ||
-        activity.post_session_notes) && (
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Ressenti</CardTitle>
-          </CardHeader>
-          <CardContent className="divide-y px-4 pb-2">
-            <DetailRow
-              label="RPE"
-              value={activity.rpe != null ? `${activity.rpe} / 10` : null}
-            />
-            <DetailRow
-              label="Forme"
-              value={activity.feel_score != null ? `${activity.feel_score} / 10` : null}
-            />
-            <DetailRow
-              label="Motivation"
-              value={activity.motivation_score != null ? `${activity.motivation_score} / 10` : null}
-            />
-            <DetailRow
-              label="Récupération perçue"
-              value={activity.perceived_recovery != null ? `${activity.perceived_recovery} / 10` : null}
-            />
-            {activity.post_session_notes && (
-              <div className="py-3 text-sm">
-                <p className="mb-1 text-muted-foreground">Notes</p>
-                <p className="whitespace-pre-wrap">{activity.post_session_notes}</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
+      <FeedbackSection activity={activity} />
 
       {(activity.temperature_c != null || activity.weather_condition) && (
         <Card>
