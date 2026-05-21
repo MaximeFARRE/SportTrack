@@ -34,6 +34,9 @@ data/*.db-journal
 # screenshots (local only, committed manually)
 screenshots/
 
+# Temporary install directories
+tmp_*/
+
 # Node / Next.js (web/)
 node_modules/
 .next/
