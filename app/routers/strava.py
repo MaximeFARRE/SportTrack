@@ -24,6 +24,7 @@ from app.services.strava_service import (
     ensure_valid_access_token_for_user,
     exchange_code_for_token,
     fetch_athlete_activities,
+    get_strava_config,
     get_strava_connection,
     upsert_strava_connection,
 )
@@ -51,12 +52,17 @@ def exchange_strava_oauth(body: ExchangePayload) -> dict:
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="user_id invalide") from exc
 
+    client = _service_client()
+    cfg = get_strava_config(client)
     try:
-        token_payload = exchange_code_for_token(body.code)
+        token_payload = exchange_code_for_token(
+            body.code,
+            client_id=cfg.get("client_id") or None,
+            client_secret=cfg.get("client_secret") or None,
+        )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
-    client = _service_client()
     connection = upsert_strava_connection(client, uid, token_payload)
     return {"connected": True, "provider_user_id": connection["provider_user_id"]}
 

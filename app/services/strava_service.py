@@ -42,13 +42,26 @@ def build_strava_authorization_url(state: str | None = None) -> str:
     return f"{STRAVA_AUTHORIZE_URL}?{urlencode(query_params)}"
 
 
-def exchange_code_for_token(code: str) -> dict[str, Any]:
-    _validate_strava_configuration()
+def get_strava_config(supabase_client: Any) -> dict[str, Any]:
+    """Return the app-level Strava credentials from the strava_config table."""
+    result = supabase_client.table("strava_config").select("*").eq("id", 1).maybe_single().execute()
+    return result.data or {}
+
+
+def exchange_code_for_token(
+    code: str,
+    client_id: str | None = None,
+    client_secret: str | None = None,
+) -> dict[str, Any]:
+    cid = client_id or settings.strava_client_id
+    csecret = client_secret or settings.strava_client_secret
+    if not cid or not csecret:
+        raise ValueError("STRAVA_CLIENT_ID / STRAVA_CLIENT_SECRET manquants.")
 
     payload = urlencode(
         {
-            "client_id": settings.strava_client_id,
-            "client_secret": settings.strava_client_secret,
+            "client_id": cid,
+            "client_secret": csecret,
             "code": code,
             "grant_type": "authorization_code",
         }
@@ -78,13 +91,20 @@ def exchange_code_for_token(code: str) -> dict[str, Any]:
     return token_payload
 
 
-def refresh_access_token(refresh_token: str) -> dict[str, Any]:
-    _validate_strava_configuration()
+def refresh_access_token(
+    refresh_token: str,
+    client_id: str | None = None,
+    client_secret: str | None = None,
+) -> dict[str, Any]:
+    cid = client_id or settings.strava_client_id
+    csecret = client_secret or settings.strava_client_secret
+    if not cid or not csecret:
+        raise ValueError("STRAVA_CLIENT_ID / STRAVA_CLIENT_SECRET manquants.")
 
     payload = urlencode(
         {
-            "client_id": settings.strava_client_id,
-            "client_secret": settings.strava_client_secret,
+            "client_id": cid,
+            "client_secret": csecret,
             "grant_type": "refresh_token",
             "refresh_token": refresh_token,
         }
@@ -278,7 +298,12 @@ def ensure_valid_access_token_for_user(supabase_client: Any, user_id: UUID) -> s
     if not refresh_tok:
         raise ValueError("Refresh token Strava manquant.")
 
-    refreshed = refresh_access_token(refresh_tok)
+    cfg = get_strava_config(supabase_client)
+    refreshed = refresh_access_token(
+        refresh_tok,
+        client_id=cfg.get("client_id") or None,
+        client_secret=cfg.get("client_secret") or None,
+    )
 
     supabase_client.table("provider_connections").update({
         "access_token": refreshed["access_token"],
