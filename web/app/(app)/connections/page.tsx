@@ -2,7 +2,7 @@ import type { Metadata } from "next"
 
 import { createClient } from "@/lib/supabase/server"
 
-import { StravaCard } from "./connections-client"
+import { StravaCard, TerraCard } from "./connections-client"
 
 export const metadata: Metadata = { title: "Mes connexions · SportTrack" }
 
@@ -12,20 +12,28 @@ export default async function ConnectionsPage() {
     data: { user },
   } = await supabase.auth.getUser()
 
-  const [{ data: stravaConn }, { count: activitiesCount }] = await Promise.all([
-    supabase
-      .from("provider_connections")
-      .select("provider_user_id,last_sync_at,is_active")
-      .eq("user_id", user!.id)
-      .eq("provider", "strava")
-      .eq("is_active", true)
-      .maybeSingle(),
-    supabase
-      .from("activities")
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", user!.id)
-      .eq("provider", "strava"),
-  ])
+  const [{ data: stravaConn }, { data: terraConn }, { count: activitiesCount }] =
+    await Promise.all([
+      supabase
+        .from("provider_connections")
+        .select("provider_user_id,last_sync_at,is_active")
+        .eq("user_id", user!.id)
+        .eq("provider", "strava")
+        .eq("is_active", true)
+        .maybeSingle(),
+      supabase
+        .from("provider_connections")
+        .select("provider_user_id,last_sync_at,is_active")
+        .eq("user_id", user!.id)
+        .eq("provider", "terra")
+        .eq("is_active", true)
+        .maybeSingle(),
+      supabase
+        .from("activities")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user!.id)
+        .eq("provider", "strava"),
+    ])
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
@@ -41,6 +49,12 @@ export default async function ConnectionsPage() {
         providerUserId={stravaConn?.provider_user_id}
         lastSyncAt={stravaConn?.last_sync_at}
         activitiesCount={activitiesCount ?? 0}
+      />
+
+      <TerraCard
+        connected={!!terraConn}
+        providerUserId={terraConn?.provider_user_id}
+        lastSyncAt={terraConn?.last_sync_at}
       />
     </div>
   )

@@ -61,6 +61,26 @@ export async function syncStravaHistory(
   return (await res.json()) as { synced: number }
 }
 
+export async function disconnectTerra(): Promise<{ success?: boolean; error?: string }> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) return { error: "Non authentifié" }
+
+  const { error } = await supabase
+    .from("provider_connections")
+    .update({ is_active: false })
+    .eq("user_id", user.id)
+    .eq("provider", "terra")
+
+  if (error) return { error: error.message }
+
+  revalidatePath("/connections")
+  return { success: true }
+}
+
 export async function disconnectStrava(): Promise<{ success?: boolean; error?: string }> {
   const supabase = await createClient()
   const {

@@ -8,7 +8,107 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
-import { disconnectStrava, syncStrava, syncStravaHistory } from "./actions"
+import { disconnectStrava, disconnectTerra, syncStrava, syncStravaHistory } from "./actions"
+
+interface TerraCardProps {
+  connected: boolean
+  providerUserId?: string | null
+  lastSyncAt?: string | null
+}
+
+export function TerraCard({ connected, providerUserId, lastSyncAt }: TerraCardProps) {
+  const router = useRouter()
+  const [disconnecting, setDisconnecting] = useState(false)
+
+  const lastSyncLabel = lastSyncAt
+    ? new Intl.DateTimeFormat("fr-FR", {
+        dateStyle: "short",
+        timeStyle: "short",
+      }).format(new Date(lastSyncAt))
+    : "Jamais"
+
+  async function handleDisconnect() {
+    setDisconnecting(true)
+    const result = await disconnectTerra()
+    setDisconnecting(false)
+    if (result.error) {
+      toast.error(result.error)
+    } else {
+      toast.success("Garmin déconnecté")
+      router.refresh()
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-700 text-white font-bold text-sm">
+            G
+          </div>
+          <div>
+            <CardTitle className="text-lg">Garmin / Polar / Fitbit</CardTitle>
+            <CardDescription>Via Terra — HRV, sommeil, récupération</CardDescription>
+          </div>
+        </div>
+        <Badge variant={connected ? "default" : "secondary"}>
+          {connected ? "Connecté" : "Non connecté"}
+        </Badge>
+      </CardHeader>
+
+      <CardContent className="space-y-4">
+        {connected ? (
+          <>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <p className="text-muted-foreground">ID Terra</p>
+                <p className="font-medium truncate">{providerUserId ?? "—"}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Dernière donnée</p>
+                <p className="font-medium">{lastSyncLabel}</p>
+              </div>
+            </div>
+
+            <div className="rounded-md bg-muted/50 p-3 text-xs text-muted-foreground space-y-1">
+              <p className="font-medium text-foreground">Données synchronisées automatiquement</p>
+              <p>HRV nocturne · FC repos · Score sommeil · Body Battery · Readiness</p>
+            </div>
+
+            <div className="pt-2">
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={handleDisconnect}
+                disabled={disconnecting}
+              >
+                {disconnecting ? "Déconnexion…" : "Déconnecter"}
+              </Button>
+            </div>
+          </>
+        ) : (
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Connectez votre montre ou bracelet pour récupérer automatiquement votre HRV,
+              votre score de sommeil et vos données de récupération.
+            </p>
+            <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+              {["Garmin", "Polar", "Fitbit", "Apple Watch"].map((p) => (
+                <span key={p} className="rounded-full border px-2 py-0.5">{p}</span>
+              ))}
+            </div>
+            <a
+              href="/connections/terra/connect"
+              className="inline-flex items-center justify-center rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground shadow hover:bg-primary/90"
+            >
+              Connecter mon appareil
+            </a>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
 
 interface StravaCardProps {
   connected: boolean

@@ -272,6 +272,85 @@ export type Database = {
         }
         Relationships: []
       }
+      daily_metrics: {
+        Row: {
+          id: string
+          user_id: string
+          metric_date: string
+          sessions_count: number | null
+          duration_sec: number | null
+          distance_m: number | null
+          elevation_gain_m: number | null
+          training_load: number | null
+          resting_hr: number | null
+          hrv_rmssd: number | null
+          hrv_status: "balanced" | "low" | "unbalanced" | "poor" | "no_status" | null
+          sleep_score: number | null
+          sleep_duration_min: number | null
+          sleep_deep_min: number | null
+          sleep_rem_min: number | null
+          sleep_light_min: number | null
+          sleep_awake_min: number | null
+          body_battery_morning: number | null
+          body_battery_evening: number | null
+          training_readiness: number | null
+          stress_score_avg: number | null
+          spo2_avg: number | null
+          respiration_avg: number | null
+          vo2max_estimated: number | null
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          metric_date: string
+          sessions_count?: number | null
+          duration_sec?: number | null
+          distance_m?: number | null
+          elevation_gain_m?: number | null
+          training_load?: number | null
+          resting_hr?: number | null
+          hrv_rmssd?: number | null
+          hrv_status?: "balanced" | "low" | "unbalanced" | "poor" | "no_status" | null
+          sleep_score?: number | null
+          sleep_duration_min?: number | null
+          sleep_deep_min?: number | null
+          sleep_rem_min?: number | null
+          sleep_light_min?: number | null
+          sleep_awake_min?: number | null
+          body_battery_morning?: number | null
+          body_battery_evening?: number | null
+          training_readiness?: number | null
+          stress_score_avg?: number | null
+          spo2_avg?: number | null
+          respiration_avg?: number | null
+          vo2max_estimated?: number | null
+        }
+        Update: {
+          sessions_count?: number | null
+          duration_sec?: number | null
+          distance_m?: number | null
+          elevation_gain_m?: number | null
+          training_load?: number | null
+          resting_hr?: number | null
+          hrv_rmssd?: number | null
+          hrv_status?: "balanced" | "low" | "unbalanced" | "poor" | "no_status" | null
+          sleep_score?: number | null
+          sleep_duration_min?: number | null
+          sleep_deep_min?: number | null
+          sleep_rem_min?: number | null
+          sleep_light_min?: number | null
+          sleep_awake_min?: number | null
+          body_battery_morning?: number | null
+          body_battery_evening?: number | null
+          training_readiness?: number | null
+          stress_score_avg?: number | null
+          spo2_avg?: number | null
+          respiration_avg?: number | null
+          vo2max_estimated?: number | null
+        }
+        Relationships: []
+      }
       strava_config: {
         Row: {
           id: 1
