@@ -351,6 +351,57 @@ export type Database = {
         }
         Relationships: []
       }
+      planned_sessions: {
+        Row: {
+          id: string
+          user_id: string
+          planned_date: string
+          planned_time: string | null
+          sport_type: string
+          session_type: string
+          planned_duration_min: number | null
+          planned_distance_km: number | null
+          planned_load: number | null
+          description: string | null
+          target_zones: number[] | null
+          status: "planned" | "completed" | "skipped" | "modified"
+          actual_activity_id: string | null
+          completion_score: number | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          planned_date: string
+          planned_time?: string | null
+          sport_type: string
+          session_type: string
+          planned_duration_min?: number | null
+          planned_distance_km?: number | null
+          planned_load?: number | null
+          description?: string | null
+          target_zones?: number[] | null
+          status?: "planned" | "completed" | "skipped" | "modified"
+          actual_activity_id?: string | null
+          completion_score?: number | null
+        }
+        Update: {
+          planned_date?: string
+          planned_time?: string | null
+          sport_type?: string
+          session_type?: string
+          planned_duration_min?: number | null
+          planned_distance_km?: number | null
+          planned_load?: number | null
+          description?: string | null
+          target_zones?: number[] | null
+          status?: "planned" | "completed" | "skipped" | "modified"
+          actual_activity_id?: string | null
+          completion_score?: number | null
+        }
+        Relationships: []
+      }
       strava_config: {
         Row: {
           id: 1
