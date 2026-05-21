@@ -4,6 +4,15 @@ Read AGENTS.md first. This file adds Claude-specific behavioral rules on top of 
 
 ---
 
+## Document reading policy
+
+- AGENTS.md : always read — it is the operating manual.
+- PIVOT_PLAN.md : read only the section for the current phase. Never load the full file.
+- AUDIT.md, DESIGN_NEXT.md : reference documents — read only if the task explicitly requires context from them.
+- Do not read a document "just in case". Read it when a specific fact is needed.
+
+---
+
 ## Behavior
 
 - Work like a focused professional engineer, not a code generator.
