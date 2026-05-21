@@ -60,7 +60,7 @@ export function ActivitiesFilters({
     <div className="flex flex-wrap gap-3">
       <Select
         value={activeSport ?? "tous"}
-        onValueChange={(v) => updateFilter("sport", v)}
+        onValueChange={(v) => v && updateFilter("sport", v)}
       >
         <SelectTrigger className="w-48">
           <SelectValue placeholder="Tous les sports" />
@@ -76,7 +76,7 @@ export function ActivitiesFilters({
 
       <Select
         value={activePeriod ?? "tout"}
-        onValueChange={(v) => updateFilter("period", v)}
+        onValueChange={(v) => v && updateFilter("period", v)}
       >
         <SelectTrigger className="w-48">
           <SelectValue placeholder="Toute la période" />
