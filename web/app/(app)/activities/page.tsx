@@ -3,33 +3,14 @@ import Link from "next/link"
 import { Suspense } from "react"
 
 import { createClient } from "@/lib/supabase/server"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
+import { ActivityCard } from "@/components/activity/activity-card"
 
 import { ActivitiesFilters } from "./activities-filters"
 
 export const metadata: Metadata = { title: "Activités · SportTrack" }
 
 const PAGE_SIZE = 20
-
-const SPORT_LABELS: Record<string, string> = {
-  Run: "Course",
-  Ride: "Vélo",
-  Swim: "Natation",
-  Hike: "Randonnée",
-  Walk: "Marche",
-  VirtualRide: "Vélo virtuel",
-  WeightTraining: "Musculation",
-  AlpineSki: "Ski alpin",
-  NordicSki: "Ski nordique",
-  Workout: "Entraînement",
-  Yoga: "Yoga",
-}
-
-function sportLabel(type: string): string {
-  return SPORT_LABELS[type] ?? type
-}
 
 function getPeriodStart(period?: string): string | null {
   if (!period || period === "tout") return null
@@ -49,16 +30,6 @@ function formatDuration(sec: number | null): string {
   const m = Math.floor((sec % 3600) / 60)
   if (h > 0) return `${h}h ${m.toString().padStart(2, "0")}m`
   return `${m}m`
-}
-
-function formatDistance(m: number | null): string {
-  if (!m) return "-"
-  return `${(m / 1000).toFixed(1)} km`
-}
-
-function formatElevation(m: number | null): string {
-  if (!m) return "-"
-  return `${Math.round(m)} m`
 }
 
 function buildPageUrl(sport?: string, period?: string, page?: number): string {
@@ -97,7 +68,9 @@ export default async function ActivitiesPage({
 
   let listQuery = supabase
     .from("activities")
-    .select("id, name, sport_type, start_date, duration_sec, distance_m, elevation_gain_m, average_heartrate")
+    .select(
+      "id, name, sport_type, start_date, duration_sec, distance_m, elevation_gain_m, average_heartrate, rpe, feel_score, motivation_score, perceived_recovery, post_session_notes, body_feeling_tags, context_tags, session_quality_tags",
+    )
     .eq("user_id", user!.id)
     .order("start_date", { ascending: false })
     .range(from, to)
@@ -168,43 +141,7 @@ export default async function ActivitiesPage({
       ) : (
         <div className="space-y-2">
           {activities.map((activity) => (
-            <Link key={activity.id} href={`/activities/${activity.id}`}>
-              <Card className="transition-colors hover:bg-muted/50 cursor-pointer">
-                <CardContent className="flex items-start justify-between gap-4 p-4">
-                  <div className="min-w-0 flex-1 space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="truncate text-sm font-medium">
-                        {activity.name ?? "Activité sans nom"}
-                      </span>
-                      <Badge variant="secondary" className="shrink-0 text-xs">
-                        {sportLabel(activity.sport_type)}
-                      </Badge>
-                    </div>
-                    <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
-                      {activity.distance_m != null && (
-                        <span>{formatDistance(activity.distance_m)}</span>
-                      )}
-                      {activity.duration_sec != null && (
-                        <span>{formatDuration(activity.duration_sec)}</span>
-                      )}
-                      {activity.elevation_gain_m != null && activity.elevation_gain_m > 0 && (
-                        <span>D+ {formatElevation(activity.elevation_gain_m)}</span>
-                      )}
-                      {activity.average_heartrate != null && (
-                        <span>{Math.round(activity.average_heartrate)} bpm</span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="shrink-0 text-right text-xs text-muted-foreground">
-                    {new Date(activity.start_date).toLocaleDateString("fr-FR", {
-                      day: "numeric",
-                      month: "short",
-                      year: "numeric",
-                    })}
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
+            <ActivityCard key={activity.id} activity={activity} />
           ))}
         </div>
       )}
