@@ -3,7 +3,7 @@ from typing import Any
 
 from sqlmodel import Session, select
 
-from app.models import Activity, Athlete, DailyMetric, Goal, User, WeeklyMetric
+from app.models import Activity, Athlete, DailyMetric, Goal, WeeklyMetric
 from app.services.gamification_service import build_personal_gamification
 from app.services.metrics_compute import (
     TIMELINE_DAYS,
@@ -43,92 +43,8 @@ def _build_mini_leaderboard(
     end_datetime: datetime,
     sport_type: str | None = None,
 ) -> list[dict[str, Any]]:
-    athletes = list(session.exec(select(Athlete)).all())
-    athlete_to_user: dict[int, int] = {}
-    for athlete in athletes:
-        athlete_to_user[athlete.id] = athlete.user_id
-
-    if not athlete_to_user:
-        return []
-
-    user_ids_with_athletes = set(athlete_to_user.values())
-    users_statement = (
-        select(User)
-        .where(User.is_active == True)
-        .where(User.id.in_(list(user_ids_with_athletes)))
-        .order_by(User.display_name.asc(), User.id.asc())
-    )
-    users = list(session.exec(users_statement).all())
-    if not users:
-        return []
-
-    activities_statement = (
-        select(Activity)
-        .where(Activity.athlete_id.in_(list(athlete_to_user.keys())))
-        .where(Activity.start_date >= start_datetime)
-        .where(Activity.start_date <= end_datetime)
-        .order_by(Activity.start_date.desc())
-    )
-    activities = list(session.exec(activities_statement).all())
-
-    normalized_filter = _normalize_sport_type(sport_type) if sport_type else None
-    if normalized_filter:
-        activities = [
-            activity for activity in activities
-            if _normalize_sport_type(activity.sport_type) == normalized_filter
-        ]
-
-    aggregates_by_user_id: dict[int, dict[str, Any]] = {
-        user.id: {
-            "user_id": user.id,
-            "display_name": user.display_name,
-            "sessions_count": 0,
-            "distance_m": 0.0,
-            "training_load": 0.0,
-        }
-        for user in users
-    }
-
-    for activity in activities:
-        user_id = athlete_to_user.get(activity.athlete_id)
-        if user_id not in aggregates_by_user_id:
-            continue
-        row = aggregates_by_user_id[user_id]
-        row["sessions_count"] += 1
-        row["distance_m"] += float(activity.distance_m)
-        row["training_load"] += _compute_training_load(activity)
-
-    ranking_rows = list(aggregates_by_user_id.values())
-    ranking_rows.sort(
-        key=lambda item: (item["training_load"], item["distance_m"], item["sessions_count"]),
-        reverse=True,
-    )
-
-    leaderboard: list[dict[str, Any]] = []
-    for index, row in enumerate(ranking_rows, start=1):
-        leaderboard.append(
-            {
-                "rank": index,
-                "user_id": row["user_id"],
-                "display_name": row["display_name"],
-                "sessions_count": row["sessions_count"],
-                "training_load": round(float(row["training_load"]), 2),
-                "distance_m": round(float(row["distance_m"]), 2),
-                "is_current_user": row["user_id"] == current_user_id,
-            }
-        )
-
-    top_rows = leaderboard[:5]
-    if current_user_id is None:
-        return top_rows
-
-    if any(row["user_id"] == current_user_id for row in top_rows):
-        return top_rows
-
-    current_row = next((row for row in leaderboard if row["user_id"] == current_user_id), None)
-    if current_row:
-        top_rows.append(current_row)
-    return top_rows
+    # Cross-user leaderboard removed with V1 User model; rebuilt for Supabase in Phase 7+.
+    return []
 
 
 def recompute_metrics_for_athlete(
@@ -725,65 +641,5 @@ def get_weekly_comparison_for_all_connected_users(
     start_date: date | None = None,
     end_date: date | None = None,
 ) -> list[dict[str, Any]]:
-    actor = session.get(User, actor_user_id)
-    if not actor or not actor.is_active:
-        raise LookupError("Utilisateur introuvable.")
-
-    athletes = list(session.exec(select(Athlete)).all())
-    athlete_ids_by_user_id: dict[int, list[int]] = {}
-    for athlete in athletes:
-        athlete_ids_by_user_id.setdefault(athlete.user_id, []).append(athlete.id)
-
-    if not athlete_ids_by_user_id:
-        return []
-
-    connected_user_ids = list(athlete_ids_by_user_id.keys())
-    users_statement = (
-        select(User)
-        .where(User.id.in_(connected_user_ids))
-        .where(User.is_active == True)
-        .order_by(User.display_name.asc(), User.id.asc())
-    )
-    connected_users = list(session.exec(users_statement).all())
-
-    comparison_rows: list[dict[str, Any]] = []
-    for user in connected_users:
-        athlete_ids = athlete_ids_by_user_id.get(user.id, [])
-        sessions_count = 0
-        duration_sec = 0
-        distance_m = 0.0
-        elevation_gain_m = 0.0
-        training_load = 0.0
-
-        if athlete_ids:
-            metrics_statement = select(WeeklyMetric).where(WeeklyMetric.athlete_id.in_(athlete_ids))
-            if start_date:
-                metrics_statement = metrics_statement.where(WeeklyMetric.week_start_date >= start_date)
-            if end_date:
-                metrics_statement = metrics_statement.where(WeeklyMetric.week_start_date <= end_date)
-            metrics = list(session.exec(metrics_statement).all())
-
-            sessions_count = sum(metric.sessions_count for metric in metrics)
-            duration_sec = sum(metric.duration_sec for metric in metrics)
-            distance_m = float(sum(metric.distance_m for metric in metrics))
-            elevation_gain_m = float(sum(metric.elevation_gain_m for metric in metrics))
-            training_load = float(sum(metric.training_load for metric in metrics))
-
-        comparison_rows.append(
-            {
-                "user_id": user.id,
-                "display_name": user.display_name,
-                "athlete_count": len(athlete_ids),
-                "sessions_count": sessions_count,
-                "duration_sec": duration_sec,
-                "distance_m": distance_m,
-                "elevation_gain_m": elevation_gain_m,
-                "training_load": training_load,
-            }
-        )
-
-    comparison_rows.sort(
-        key=lambda item: (item["training_load"], item["distance_m"], item["sessions_count"]),
-        reverse=True,
-    )
-    return comparison_rows
+    # Cross-user weekly comparison removed with V1 User model; rebuilt for Supabase in Phase 7+.
+    raise LookupError("Utilisateur introuvable.")

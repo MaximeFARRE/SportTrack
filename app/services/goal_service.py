@@ -5,7 +5,7 @@ from typing import Any, Optional
 
 from sqlmodel import Session, select
 
-from app.models import Activity, Athlete, Goal, User
+from app.models import Activity, Athlete, Goal
 from app.services.gamification_service import build_personal_gamification
 from app.schemas.goal import GoalCreate, GoalUpdate
 from app.services.metrics_service import get_dashboard_summary
@@ -391,76 +391,8 @@ def _build_friends_comparison(
     lookback_start: date,
     lookback_end: date,
 ) -> list[dict[str, Any]]:
-    goals_statement = (
-        select(Goal, Athlete, User)
-        .join(Athlete, Goal.athlete_id == Athlete.id)
-        .join(User, Athlete.user_id == User.id)
-        .where(Goal.is_active == True)
-        .where(User.is_active == True)
-    )
-    rows = list(session.exec(goals_statement).all())
-
-    ranking: list[dict[str, Any]] = []
-    for goal, athlete, user in rows:
-        if goal.id == current_goal.id:
-            continue
-        if goal_sport_type and not _normalize_sport_type(goal.sport_type) == _normalize_sport_type(goal_sport_type):
-            continue
-
-        activities = _fetch_activities_for_athlete(
-            session=session,
-            athlete_id=athlete.id,
-            start_date=lookback_start,
-            end_date=lookback_end,
-        )
-        if goal_sport_type:
-            activities = [a for a in activities if _sport_matches(a, goal_sport_type)]
-
-        ranking.append(
-            {
-                "user_id": user.id,
-                "display_name": user.display_name,
-                "sessions_28d": len(activities),
-                "distance_m_28d": round(sum(float(a.distance_m) for a in activities), 1),
-                "load_28d": round(sum(_activity_load(a) for a in activities), 1),
-                "is_current_user": user.id == current_user_id,
-            }
-        )
-
-    current_athlete = session.get(Athlete, current_goal.athlete_id)
-    if current_athlete:
-        current_activities = _fetch_activities_for_athlete(
-            session=session,
-            athlete_id=current_athlete.id,
-            start_date=lookback_start,
-            end_date=lookback_end,
-        )
-        if goal_sport_type:
-            current_activities = [a for a in current_activities if _sport_matches(a, goal_sport_type)]
-        current_user = session.get(User, current_user_id)
-        ranking.append(
-            {
-                "user_id": current_user_id,
-                "display_name": current_user.display_name if current_user else "Moi",
-                "sessions_28d": len(current_activities),
-                "distance_m_28d": round(sum(float(a.distance_m) for a in current_activities), 1),
-                "load_28d": round(sum(_activity_load(a) for a in current_activities), 1),
-                "is_current_user": True,
-            }
-        )
-
-    ranking.sort(key=lambda row: (row["load_28d"], row["distance_m_28d"], row["sessions_28d"]), reverse=True)
-    for idx, row in enumerate(ranking, start=1):
-        row["rank"] = idx
-
-    top_rows = ranking[:5]
-    if any(item["is_current_user"] for item in top_rows):
-        return top_rows
-
-    current_row = next((item for item in ranking if item["is_current_user"]), None)
-    if current_row:
-        top_rows.append(current_row)
-    return top_rows
+    # Cross-user comparison removed with V1 User model; rebuilt for Supabase in Phase 3+.
+    return []
 
 
 def _compute_goal_campaign(session: Session, goal: Goal) -> dict[str, Any]:
