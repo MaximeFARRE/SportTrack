@@ -61,6 +61,56 @@ def exchange_strava_oauth(body: ExchangePayload) -> dict:
     return {"connected": True, "provider_user_id": connection["provider_user_id"]}
 
 
+class WebhookEventPayload(BaseModel):
+    activity_id: int
+    strava_athlete_id: str
+
+
+@internal_router.post("/strava/webhook-event", dependencies=[Depends(require_internal_secret)])
+def handle_strava_webhook_event(body: WebhookEventPayload) -> dict:
+    """Resolve user_id from Strava athlete ID and sync the new activity."""
+    client = _service_client()
+
+    # Look up which user owns this Strava athlete account
+    result = (
+        client.table("provider_connections")
+        .select("user_id")
+        .eq("provider", "strava")
+        .eq("provider_user_id", body.strava_athlete_id)
+        .eq("is_active", True)
+        .maybe_single()
+        .execute()
+    )
+    if not result.data:
+        return {"skipped": True, "reason": "athlete not found"}
+
+    user_id = UUID(result.data["user_id"])
+
+    try:
+        access_token = ensure_valid_access_token_for_user(client, user_id)
+    except ValueError:
+        return {"skipped": True, "reason": "token unavailable"}
+
+    import json as _json
+    from urllib.request import Request as _Req, urlopen as _open
+
+    url = f"https://www.strava.com/api/v3/activities/{body.activity_id}"
+    req = _Req(url, headers={"Authorization": f"Bearer {access_token}"}, method="GET")
+    try:
+        with _open(req, timeout=20) as resp:
+            raw = _json.loads(resp.read().decode("utf-8"))
+    except Exception:
+        return {"skipped": True, "reason": "strava fetch failed"}
+
+    activity = _map_strava_activity(str(user_id), raw)
+    if activity:
+        client.table("activities").upsert(
+            activity, on_conflict="user_id,provider,provider_activity_id"
+        ).execute()
+
+    return {"synced": 1 if activity else 0}
+
+
 class SingleActivityPayload(BaseModel):
     user_id: str
     activity_id: int
