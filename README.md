@@ -11,9 +11,63 @@ A multi-user sports training tracker that imports activities from Strava, comput
 
 ---
 
-## Project context
+## 🚧 Pivot V2 in progress (branch `pivot/v2`)
 
-SportTrack was built as a personal project to practice full-stack Python development. The goal was to design a realistic, multi-user application from scratch — including API design, OAuth integration, data modeling, metric computation, and a functional UI — without relying on any existing sports platform's built-in analytics.
+The project is being rebuilt around a modern multi-tenant stack:
+
+| Layer | Stack |
+|---|---|
+| Frontend | **Next.js 16** (App Router) + Tailwind 4 + shadcn/ui (Base UI) |
+| Auth & DB | **Supabase** (Postgres + Auth + Row Level Security) |
+| Backend | **FastAPI** (calculs CTL/ATL/TSB, webhooks Terra, coach IA Claude) |
+| Wearables | **Terra API** (Garmin, Polar, Fitbit, Apple Health) + Strava |
+
+See [`PIVOT_PLAN.md`](./PIVOT_PLAN.md), [`AUDIT.md`](./AUDIT.md) and
+[`DESIGN_NEXT.md`](./DESIGN_NEXT.md) for the full roadmap.
+
+### Setup V2 (development)
+
+**Prerequisites:** Python 3.11+, Node.js 20+, a Supabase project, a Terra API
+account, and a Strava API application.
+
+1. **Backend (FastAPI)**
+
+   ```bash
+   python -m venv .venv && source .venv/bin/activate    # Windows: .venv\Scripts\activate
+   pip install -r requirements.txt
+   cp .env.example .env                                  # fill in SUPABASE_* and friends
+   python run.py                                         # http://localhost:8000
+   ```
+
+2. **Frontend (Next.js)**
+
+   ```bash
+   cd web
+   npm install
+   cp .env.example .env.local                            # fill in NEXT_PUBLIC_SUPABASE_*
+   npm run dev                                           # http://localhost:3000
+   ```
+
+3. **Database (Supabase)**
+
+   ```bash
+   npm i -g supabase
+   supabase login
+   supabase link --project-ref <your-project-ref>
+   supabase db push                                      # applies migrations
+   supabase gen types typescript --linked > web/lib/types/database.ts
+   ```
+
+Once running, sign up on http://localhost:3000/signup — the
+`handle_new_user` trigger auto-creates your row in `public.profiles`.
+
+---
+
+## Legacy (V1, Streamlit) — being phased out
+
+The original Streamlit UI and bcrypt-based auth still live in `ui/` and
+`app/routers/auth.py` while the new stack is being built. They will be
+removed in Phase 2 of the pivot.
 
 ---
 

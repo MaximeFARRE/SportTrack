@@ -67,5 +67,5 @@ def strava_callback(
 
     upsert_strava_athlete(session=session, user_id=user.id, token_payload=token_payload)
 
-    redirect_url = f"{settings.streamlit_url}/?strava_user_id={user.id}"
+    redirect_url = f"{settings.web_base_url}/?strava_user_id={user.id}"
     return RedirectResponse(url=redirect_url)

@@ -48,5 +48,49 @@ class _Settings:
     def strava_scope(self) -> str:
         return _get("STRAVA_SCOPE", "read,activity:read_all")
 
+    # ---------- Supabase ----------
+    @property
+    def supabase_url(self) -> str:
+        return _get("SUPABASE_URL", "")
+
+    @property
+    def supabase_service_role_key(self) -> str:
+        return _get("SUPABASE_SERVICE_ROLE_KEY", "")
+
+    @property
+    def supabase_jwt_secret(self) -> str:
+        return _get("SUPABASE_JWT_SECRET", "")
+
+    # ---------- Terra ----------
+    @property
+    def terra_dev_id(self) -> str:
+        return _get("TERRA_DEV_ID", "")
+
+    @property
+    def terra_api_key(self) -> str:
+        return _get("TERRA_API_KEY", "")
+
+    @property
+    def terra_webhook_secret(self) -> str:
+        return _get("TERRA_WEBHOOK_SECRET", "")
+
+    # ---------- Anthropic ----------
+    @property
+    def anthropic_api_key(self) -> str:
+        return _get("ANTHROPIC_API_KEY", "")
+
+    # ---------- Internal ----------
+    @property
+    def internal_secret(self) -> str:
+        return _get("INTERNAL_SECRET", "")
+
+    @property
+    def encryption_key(self) -> str:
+        return _get("ENCRYPTION_KEY", "")
+
+    @property
+    def web_base_url(self) -> str:
+        return _get("WEB_BASE_URL", "http://localhost:3000")
+
 
 settings = _Settings()

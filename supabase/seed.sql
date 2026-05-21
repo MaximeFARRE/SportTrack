@@ -1,0 +1,3 @@
+-- Local development seed.
+-- This file runs after migrations during `supabase db reset`.
+-- Leave empty until we have realistic dev data to seed.

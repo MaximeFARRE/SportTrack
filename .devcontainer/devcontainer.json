@@ -1,33 +1,34 @@
 {
-  "name": "Python 3",
-  // Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
+  "name": "SportTrack V2",
   "image": "mcr.microsoft.com/devcontainers/python:1-3.11-bookworm",
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": { "version": "20" }
+  },
   "customizations": {
     "codespaces": {
-      "openFiles": [
-        "README.md",
-        "run.py"
-      ]
+      "openFiles": ["README.md"]
     },
     "vscode": {
-      "settings": {},
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/local/bin/python"
+      },
       "extensions": [
         "ms-python.python",
-        "ms-python.vscode-pylance"
+        "ms-python.vscode-pylance",
+        "bradlc.vscode-tailwindcss",
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode"
       ]
     }
   },
-  "updateContentCommand": "[ -f packages.txt ] && sudo apt update && sudo apt upgrade -y && sudo xargs apt install -y <packages.txt; [ -f requirements.txt ] && pip3 install --user -r requirements.txt; pip3 install --user streamlit; echo '✅ Packages installed and Requirements met'",
+  "updateContentCommand": "pip3 install --user -r requirements.txt && cd web && npm install",
   "postAttachCommand": {
-    "server": "streamlit run run.py --server.enableCORS false --server.enableXsrfProtection false"
+    "fastapi": "python run.py",
+    "nextjs": "cd web && npm run dev"
   },
   "portsAttributes": {
-    "8501": {
-      "label": "Application",
-      "onAutoForward": "openPreview"
-    }
+    "8000": { "label": "FastAPI", "onAutoForward": "notify" },
+    "3000": { "label": "Next.js", "onAutoForward": "openPreview" }
   },
-  "forwardPorts": [
-    8501
-  ]
+  "forwardPorts": [3000, 8000]
 }
