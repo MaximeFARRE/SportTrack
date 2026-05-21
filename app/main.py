@@ -6,15 +6,11 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.db import create_db_and_tables
-from app.routers.activities import router as activities_router
-from app.routers.athletes import router as athletes_router
-from app.routers.auth import router as auth_router
-from app.routers.goals import router as goals_router
-from app.routers.groups import router as groups_router
 from app.routers.me import router as me_router
-from app.routers.metrics import router as metrics_router
-from app.routers.sync import router as sync_router
-from app.routers.users import router as users_router
+from app.routers.strava import internal_router as strava_internal_router
+from app.routers.strava import router as strava_router
+from app.routers.terra import internal_router as terra_internal_router
+from app.routers.terra import router as terra_router
 from app.routers.zones import internal_router as zones_internal_router
 from app.routers.zones import router as zones_router
 
@@ -39,20 +35,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# New Supabase-authenticated routes.
 app.include_router(me_router)
 app.include_router(zones_router)
 app.include_router(zones_internal_router)
-
-# Legacy routes — to be migrated in Phase 2 (still use bcrypt auth).
-app.include_router(auth_router)
-app.include_router(users_router)
-app.include_router(athletes_router)
-app.include_router(activities_router)
-app.include_router(sync_router)
-app.include_router(metrics_router)
-app.include_router(groups_router)
-app.include_router(goals_router)
+app.include_router(strava_router)
+app.include_router(strava_internal_router)
+app.include_router(terra_router)
+app.include_router(terra_internal_router)
 
 
 @app.get("/")

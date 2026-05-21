@@ -1,31 +1,30 @@
 # AGENTS.md — Operating Manual
 
-SportTrack is a multi-user sports training tracker. It imports Strava activities, computes training metrics, and serves individual and group dashboards through a FastAPI backend and a Streamlit frontend.
+SportTrack is a multi-user sports training tracker. It computes training metrics (CTL/ATL/TSB) via a FastAPI backend.
+
+**Current stack (pivot/v2):** Next.js 15 frontend + Supabase (Postgres + Auth + RLS) + FastAPI for heavy compute. The old Streamlit UI (`ui/`) is being replaced. For the full pivot plan, read only the relevant phase section in PIVOT_PLAN.md — never the full file.
+
+**Reference documents (read on demand, not by default):**
+- `PIVOT_PLAN.md` — implementation plan by phase (read only the section you need)
+- `AUDIT.md` — historical analysis, read only for strategic context
+- `DESIGN_NEXT.md` — design specs for upcoming features, read only when implementing that feature
 
 ---
 
 ## Commands
 
 ```bash
-# Install dependencies
+# Backend (FastAPI)
 pip install -r requirements.txt
+python run.py                          # http://127.0.0.1:8000 (docs at /docs)
+pytest                                 # run all tests
 
-# Initialize the database (first run only)
-python -m scripts.init_db
+# Frontend (Next.js)
+cd web && npm install
+npm run dev                            # http://localhost:3000
 
-# Start the API (http://127.0.0.1:8000 — docs at /docs)
-python run.py
-
-# Start the UI (http://localhost:18501)
-python -m streamlit run ui/Home.py --server.port 18501
-
-# Run tests
-pytest
-
-# Sync recent Strava activities for one athlete
+# Scripts
 python -m scripts.sync_recent --athlete-id <id> [--per-page 30]
-
-# Recompute all metrics for one athlete
 python -m scripts.recompute_metrics --athlete-id <id> [--start-date YYYY-MM-DD]
 ```
 
@@ -35,16 +34,17 @@ No linter or formatter is configured. Do not add one without being asked.
 
 ## Architecture
 
-The project has four strict layers. Never cross them.
+**FastAPI backend (active)** — four strict layers, never cross them:
 
 | Layer | Location | Responsibility |
 |---|---|---|
 | Models | `app/models/` | SQLModel table definitions only |
 | Services | `app/services/` | All business logic and DB queries |
 | Routers | `app/routers/` | HTTP interface, input validation, error codes |
-| UI | `ui/` | Presentation and user interaction only |
 
-**Critical rule:** `ui/` must never import from `app.*`. The UI talks to the backend exclusively via `ui/api_client.py` (HTTP).
+**Next.js frontend (`web/`)** — replacing the old Streamlit UI. Talks to FastAPI for heavy compute; reads/writes data directly via Supabase client for CRUD (RLS enforced). Never import from `app.*`.
+
+**Old Streamlit UI (`ui/`)** — being phased out. Do not add features to it.
 
 ### Services layout
 

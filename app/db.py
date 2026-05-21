@@ -13,9 +13,6 @@ from app.models import (  # noqa: F401
     Athlete,
     DailyMetric,
     Goal,
-    Group,
-    GroupMember,
-    User,
     WeeklyMetric,
 )
 

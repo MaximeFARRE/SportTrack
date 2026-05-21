@@ -6,6 +6,7 @@ import {
   LineChart,
   ListChecks,
   Plug,
+  Settings,
   Sparkles,
   UserRound,
 } from "lucide-react"
@@ -27,4 +28,5 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/coach", label: "Coach IA", icon: Sparkles },
   { href: "/connections", label: "Connexions", icon: Plug },
   { href: "/profile", label: "Profil", icon: UserRound },
+  { href: "/settings/strava", label: "Paramètres", icon: Settings },
 ]

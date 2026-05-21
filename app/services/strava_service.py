@@ -3,6 +3,7 @@ from datetime import UTC, datetime
 from typing import Any
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
+from uuid import UUID
 
 from sqlmodel import Session, select
 
@@ -41,13 +42,26 @@ def build_strava_authorization_url(state: str | None = None) -> str:
     return f"{STRAVA_AUTHORIZE_URL}?{urlencode(query_params)}"
 
 
-def exchange_code_for_token(code: str) -> dict[str, Any]:
-    _validate_strava_configuration()
+def get_strava_config(supabase_client: Any) -> dict[str, Any]:
+    """Return the app-level Strava credentials from the strava_config table."""
+    result = supabase_client.table("strava_config").select("*").eq("id", 1).maybe_single().execute()
+    return result.data or {}
+
+
+def exchange_code_for_token(
+    code: str,
+    client_id: str | None = None,
+    client_secret: str | None = None,
+) -> dict[str, Any]:
+    cid = client_id or settings.strava_client_id
+    csecret = client_secret or settings.strava_client_secret
+    if not cid or not csecret:
+        raise ValueError("STRAVA_CLIENT_ID / STRAVA_CLIENT_SECRET manquants.")
 
     payload = urlencode(
         {
-            "client_id": settings.strava_client_id,
-            "client_secret": settings.strava_client_secret,
+            "client_id": cid,
+            "client_secret": csecret,
             "code": code,
             "grant_type": "authorization_code",
         }
@@ -77,13 +91,20 @@ def exchange_code_for_token(code: str) -> dict[str, Any]:
     return token_payload
 
 
-def refresh_access_token(refresh_token: str) -> dict[str, Any]:
-    _validate_strava_configuration()
+def refresh_access_token(
+    refresh_token: str,
+    client_id: str | None = None,
+    client_secret: str | None = None,
+) -> dict[str, Any]:
+    cid = client_id or settings.strava_client_id
+    csecret = client_secret or settings.strava_client_secret
+    if not cid or not csecret:
+        raise ValueError("STRAVA_CLIENT_ID / STRAVA_CLIENT_SECRET manquants.")
 
     payload = urlencode(
         {
-            "client_id": settings.strava_client_id,
-            "client_secret": settings.strava_client_secret,
+            "client_id": cid,
+            "client_secret": csecret,
             "grant_type": "refresh_token",
             "refresh_token": refresh_token,
         }
@@ -217,3 +238,77 @@ def upsert_strava_athlete(session: Session, user_id: int, token_payload: dict[st
     session.commit()
     session.refresh(athlete)
     return athlete
+
+
+# ── Supabase-backed token management (Phase 3+) ──────────────────────────────
+
+def get_strava_connection(supabase_client: Any, user_id: UUID) -> dict | None:
+    """Return the active provider_connections row for this user, or None."""
+    result = (
+        supabase_client.table("provider_connections")
+        .select("*")
+        .eq("user_id", str(user_id))
+        .eq("provider", "strava")
+        .eq("is_active", True)
+        .maybe_single()
+        .execute()
+    )
+    return result.data
+
+
+def upsert_strava_connection(supabase_client: Any, user_id: UUID, token_payload: dict[str, Any]) -> dict:
+    """Store or refresh Strava tokens in provider_connections."""
+    athlete_data = token_payload.get("athlete") or {}
+    provider_user_id = str(athlete_data.get("id", ""))
+    scope_raw = token_payload.get("scope", "")
+    scopes = [s.strip() for s in scope_raw.split(",") if s.strip()] if scope_raw else []
+
+    data = {
+        "user_id": str(user_id),
+        "provider": "strava",
+        "provider_user_id": provider_user_id,
+        "access_token": token_payload.get("access_token"),
+        "refresh_token": token_payload.get("refresh_token"),
+        "token_expires_at": token_payload.get("expires_at"),
+        "scopes": scopes,
+        "is_active": True,
+    }
+
+    result = (
+        supabase_client.table("provider_connections")
+        .upsert(data, on_conflict="user_id,provider")
+        .execute()
+    )
+    return result.data[0]
+
+
+def ensure_valid_access_token_for_user(supabase_client: Any, user_id: UUID) -> str:
+    """Return a valid Strava access token, refreshing if within 10-minute expiry window."""
+    connection = get_strava_connection(supabase_client, user_id)
+    if not connection:
+        raise ValueError("Strava non connecté.")
+
+    now_ts = int(datetime.now(UTC).timestamp())
+    expires_at = int(connection.get("token_expires_at") or 0)
+
+    if expires_at > now_ts + TOKEN_REFRESH_BUFFER_SECONDS:
+        return connection["access_token"]
+
+    refresh_tok = connection.get("refresh_token")
+    if not refresh_tok:
+        raise ValueError("Refresh token Strava manquant.")
+
+    cfg = get_strava_config(supabase_client)
+    refreshed = refresh_access_token(
+        refresh_tok,
+        client_id=cfg.get("client_id") or None,
+        client_secret=cfg.get("client_secret") or None,
+    )
+
+    supabase_client.table("provider_connections").update({
+        "access_token": refreshed["access_token"],
+        "refresh_token": refreshed.get("refresh_token", refresh_tok),
+        "token_expires_at": refreshed.get("expires_at", expires_at),
+    }).eq("user_id", str(user_id)).eq("provider", "strava").execute()
+
+    return refreshed["access_token"]
