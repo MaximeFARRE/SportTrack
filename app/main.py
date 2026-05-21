@@ -9,6 +9,8 @@ from app.db import create_db_and_tables
 from app.routers.me import router as me_router
 from app.routers.strava import internal_router as strava_internal_router
 from app.routers.strava import router as strava_router
+from app.routers.terra import internal_router as terra_internal_router
+from app.routers.terra import router as terra_router
 from app.routers.zones import internal_router as zones_internal_router
 from app.routers.zones import router as zones_router
 
@@ -38,6 +40,8 @@ app.include_router(zones_router)
 app.include_router(zones_internal_router)
 app.include_router(strava_router)
 app.include_router(strava_internal_router)
+app.include_router(terra_router)
+app.include_router(terra_internal_router)
 
 
 @app.get("/")
