@@ -35,7 +35,9 @@ export default async function CalendarPage({
 
   if (!user) return null
 
-  const [activitiesResult, metricsResult] = await Promise.all([
+  const today = new Date().toISOString().slice(0, 10)
+
+  const [activitiesResult, metricsResult, plannedResult] = await Promise.all([
     supabase
       .from("activities")
       .select("id, name, sport_type, start_date, duration_sec, distance_m")
@@ -51,10 +53,20 @@ export default async function CalendarPage({
       .eq("user_id", user.id)
       .gte("metric_date", firstDay)
       .lt("metric_date", lastDay),
+    supabase
+      .from("planned_sessions")
+      .select("planned_date, status")
+      .eq("user_id", user.id)
+      .gte("planned_date", firstDay)
+      .lt("planned_date", lastDay),
   ])
 
   const activities = activitiesResult.data ?? []
   const metrics = metricsResult.data ?? []
+  // Days with a planned session that was never completed (past only)
+  const missedDays = (plannedResult.data ?? [])
+    .filter((p) => p.status === "planned" && p.planned_date < today)
+    .map((p) => p.planned_date)
 
   // Build dayData map
   const dayData: Record<string, DayData> = {}
@@ -91,6 +103,7 @@ export default async function CalendarPage({
       month={month}
       dayData={dayData}
       allSports={allSports}
+      missedDays={missedDays}
     />
   )
 }

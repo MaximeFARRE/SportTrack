@@ -145,11 +145,13 @@ export function CalendarClient({
   month,
   dayData,
   allSports,
+  missedDays = [],
 }: {
   year: number
   month: number
   dayData: Record<string, DayData>
   allSports: string[]
+  missedDays?: string[]
 }) {
   const router = useRouter()
   const [selectedDay, setSelectedDay] = useState<string | null>(null)
@@ -157,6 +159,7 @@ export function CalendarClient({
   const [metric, setMetric] = useState<Metric>("charge")
 
   const today = new Date().toISOString().slice(0, 10)
+  const missedSet = new Set(missedDays)
 
   // ── Calendar grid cells ──────────────────────────────────────────────────
   const { cells, dayKeys } = useMemo(() => {
@@ -291,6 +294,7 @@ export function CalendarClient({
             const data = filteredDayData[key]
             const bucket = buckets.get(key) ?? 0
             const isToday = key === today
+            const isMissed = missedSet.has(key)
             const dayNum = parseInt(key.split("-")[2], 10)
             const sports = [...new Set(data?.activities.map((a) => a.sport_type) ?? [])]
 
@@ -300,7 +304,6 @@ export function CalendarClient({
                 onClick={() => setSelectedDay(key)}
                 className={cn(
                   "relative aspect-square border-b border-r p-1 text-left transition-opacity hover:opacity-80",
-                  // Remove right border on last column
                   (idx + 1) % 7 === 0 && "border-r-0",
                   heatClass(bucket),
                 )}
@@ -314,6 +317,13 @@ export function CalendarClient({
                 >
                   {dayNum}
                 </span>
+
+                {/* Missed planned session badge */}
+                {isMissed && (
+                  <span className="absolute right-0.5 top-0.5 text-[10px]" title="Séance non réalisée">
+                    ⚠️
+                  </span>
+                )}
 
                 {/* Sport emojis */}
                 {sports.length > 0 && (
