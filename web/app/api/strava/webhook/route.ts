@@ -14,7 +14,13 @@
 
 import { NextRequest, NextResponse } from "next/server"
 
-const VERIFY_TOKEN = process.env.STRAVA_WEBHOOK_VERIFY_TOKEN ?? ""
+import { createServiceClient } from "@/lib/supabase/service"
+
+async function getVerifyToken(): Promise<string> {
+  const service = createServiceClient()
+  const { data } = await service.from("strava_config").select("webhook_verify_token").eq("id", 1).single()
+  return data?.webhook_verify_token ?? process.env.STRAVA_WEBHOOK_VERIFY_TOKEN ?? ""
+}
 
 /** Strava calls GET to verify ownership before activating the subscription. */
 export async function GET(request: NextRequest) {
@@ -23,7 +29,9 @@ export async function GET(request: NextRequest) {
   const token = searchParams.get("hub.verify_token")
   const challenge = searchParams.get("hub.challenge")
 
-  if (mode === "subscribe" && token === VERIFY_TOKEN && challenge) {
+  const verifyToken = await getVerifyToken()
+
+  if (mode === "subscribe" && token === verifyToken && challenge) {
     return NextResponse.json({ "hub.challenge": challenge })
   }
 
