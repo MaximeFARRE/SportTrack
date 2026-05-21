@@ -272,6 +272,27 @@ export type Database = {
         }
         Relationships: []
       }
+      strava_config: {
+        Row: {
+          id: 1
+          client_id: string
+          client_secret: string
+          webhook_verify_token: string
+          updated_at: string
+        }
+        Insert: {
+          id?: 1
+          client_id?: string
+          client_secret?: string
+          webhook_verify_token?: string
+        }
+        Update: {
+          client_id?: string
+          client_secret?: string
+          webhook_verify_token?: string
+        }
+        Relationships: []
+      }
     }
     Views: Record<string, never>
     Functions: Record<string, never>
