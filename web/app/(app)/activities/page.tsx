@@ -97,11 +97,16 @@ export default async function ActivitiesPage({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Activités</h1>
-        <p className="text-sm text-muted-foreground">
-          {stats.count} activité{stats.count !== 1 ? "s" : ""} importée{stats.count !== 1 ? "s" : ""}
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold">Activités</h1>
+          <p className="text-sm text-muted-foreground">
+            {stats.count} activité{stats.count !== 1 ? "s" : ""}
+          </p>
+        </div>
+        <Link href="/activities/new">
+          <Button size="sm">+ Nouvelle activité</Button>
+        </Link>
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
