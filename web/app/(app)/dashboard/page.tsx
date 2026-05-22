@@ -18,16 +18,21 @@ function formatDuration(sec: number | null): string {
   return `${m}m`
 }
 
-function getFormScore(readiness: number | null): number {
-  if (readiness == null) return 0
-  return Math.round(readiness / 10)
+type RiskLevel = "none" | "low" | "moderate" | "high" | "critical"
+
+const LEVEL_CONFIG: Record<RiskLevel, { label: string; advice: string; barClass: string }> = {
+  none:     { label: "Aucun risque détecté",      advice: "Séance intensive possible",          barClass: "bg-emerald-500" },
+  low:      { label: "Risque faible",              advice: "Séance normale recommandée",         barClass: "bg-blue-500" },
+  moderate: { label: "Risque modéré",              advice: "Séance légère conseillée",           barClass: "bg-amber-500" },
+  high:     { label: "Risque élevé",               advice: "Récupération forte recommandée",     barClass: "bg-orange-500" },
+  critical: { label: "Risque critique ⚠️",          advice: "Repos impératif aujourd'hui",        barClass: "bg-red-500" },
 }
 
-function getRiskLabel(score: number): { label: string; advice: string } {
-  if (score >= 8) return { label: "Excellente forme", advice: "Séance intensive possible" }
-  if (score >= 6) return { label: "Bonne forme", advice: "Séance normale recommandée" }
-  if (score >= 4) return { label: "Forme modérée", advice: "Séance légère conseillée" }
-  return { label: "Récupération nécessaire", advice: "Repos ou récup active" }
+function getFallbackScore(readiness: number | null): { score: number; level: RiskLevel; reasons: string[] } {
+  if (readiness == null) return { score: 0, level: "none", reasons: [] }
+  const score = Math.round(readiness / 10)
+  const level: RiskLevel = score >= 8 ? "none" : score >= 6 ? "low" : score >= 4 ? "moderate" : "high"
+  return { score, level, reasons: [] }
 }
 
 export default async function DashboardPage() {
@@ -42,7 +47,9 @@ export default async function DashboardPage() {
   const weekStart = startOfWeek(now, { weekStartsOn: 1 })
   const ninetyDaysAgo = subDays(now, 90)
 
-  const [profileResult, athleteResult, weekActivitiesResult, recentMetricsResult] =
+  const today = now.toISOString().slice(0, 10)
+
+  const [profileResult, athleteResult, weekActivitiesResult, recentMetricsResult, riskResult] =
     await Promise.all([
       supabase.from("profiles").select("display_name").eq("id", user.id).maybeSingle(),
       supabase.from("athlete_profiles").select("primary_sport, weekly_target_hours").eq("user_id", user.id).maybeSingle(),
@@ -58,6 +65,12 @@ export default async function DashboardPage() {
         .eq("user_id", user.id)
         .gte("metric_date", ninetyDaysAgo.toISOString().slice(0, 10))
         .order("metric_date"),
+      supabase
+        .from("risk_assessments")
+        .select("score, level, reasons")
+        .eq("user_id", user.id)
+        .eq("assessment_date", today)
+        .maybeSingle(),
     ])
 
   const displayName = profileResult.data?.display_name
@@ -66,8 +79,12 @@ export default async function DashboardPage() {
   const recentMetrics = recentMetricsResult.data ?? []
   const latestMetric = recentMetrics.at(-1)
 
-  const formScore = getFormScore(latestMetric?.training_readiness ?? null)
-  const { label: formLabel, advice: formAdvice } = getRiskLabel(formScore)
+  // Risk score: use today's risk_assessments row if available, else derive from training_readiness
+  const riskData = riskResult.data
+  const { score: formScore, level: formLevel, reasons: formReasons } = riskData
+    ? { score: riskData.score, level: riskData.level as RiskLevel, reasons: riskData.reasons as string[] }
+    : getFallbackScore(latestMetric?.training_readiness ?? null)
+  const { label: formLabel, advice: formAdvice, barClass: formBarClass } = LEVEL_CONFIG[formLevel]
 
   const weekDuration = weekActivities.reduce((sum, a) => sum + (a.duration_sec ?? 0), 0)
   const weekLoad = recentMetrics
@@ -104,20 +121,32 @@ export default async function DashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            {latestMetric ? (
+            {latestMetric || riskData ? (
               <>
                 <div className="flex items-end gap-2">
                   <span className="text-3xl font-bold">{formScore}</span>
                   <span className="mb-1 text-muted-foreground">/10</span>
+                  {riskData && (
+                    <span className="mb-1 text-xs text-muted-foreground">(analyse IA)</span>
+                  )}
                 </div>
                 <div className="h-2 overflow-hidden rounded-full bg-muted">
                   <div
-                    className="h-full rounded-full bg-primary transition-all"
+                    className={`h-full rounded-full transition-all ${formBarClass}`}
                     style={{ width: `${formScore * 10}%` }}
                   />
                 </div>
                 <p className="text-sm font-medium">{formLabel}</p>
                 <p className="text-xs text-muted-foreground">💡 {formAdvice}</p>
+                {formReasons.length > 0 && (
+                  <ul className="mt-2 space-y-1">
+                    {formReasons.slice(0, 3).map((reason, i) => (
+                      <li key={i} className="text-xs text-muted-foreground">
+                        • {reason}
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </>
             ) : (
               <p className="text-sm text-muted-foreground">
