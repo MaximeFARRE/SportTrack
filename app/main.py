@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.db import create_db_and_tables
+from app.routers.export import router as export_router
 from app.routers.injuries import router as injuries_router
 from app.routers.me import router as me_router
 from app.routers.risk import router as risk_router
@@ -41,6 +42,7 @@ app.add_middleware(
 )
 
 app.include_router(me_router)
+app.include_router(export_router)
 app.include_router(injuries_router)
 app.include_router(risk_router)
 app.include_router(zones_router)
