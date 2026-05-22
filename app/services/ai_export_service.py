@@ -70,16 +70,8 @@ def _fetch_athlete(user_id: str, client: Any) -> dict:
     })
 
 
-def _fetch_goals(user_id: str, client: Any) -> list[str]:
-    result = (
-        client.table("injuries")
-        .select("id")
-        .eq("user_id", user_id)
-        .limit(1)
-        .execute()
-    )
-    # Reuse the goals endpoint pattern — goals are in athlete_profiles context
-    # but there's no separate goals table in Supabase yet; return empty list
+def _fetch_goals(user_id: str, client: Any) -> list[str]:  # noqa: ARG001
+    # No separate goals table in Supabase yet; return empty list
     return []
 
 

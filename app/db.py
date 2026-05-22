@@ -114,10 +114,6 @@ def get_session():
         yield session
 
 
-def create_db_and_tables() -> None:
-    _get_engine()
-
-
 @contextmanager
 def get_db():
     """Context manager for non-FastAPI callers (scripts, tests)."""
