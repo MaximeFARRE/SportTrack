@@ -28,10 +28,11 @@ export function BottomNav() {
             <Link
               key={item.href}
               href={item.href}
+              aria-label={item.label}
               className="flex flex-1 flex-col items-center justify-center gap-0.5"
             >
               <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm">
-                <Icon className="h-5 w-5" />
+                <Icon className="h-5 w-5" aria-hidden="true" />
               </span>
             </Link>
           )
