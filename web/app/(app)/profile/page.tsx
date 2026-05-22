@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 
 import { createClient } from "@/lib/supabase/server"
+import { ExportCard } from "./export-card"
 import { ProfileForm } from "./profile-form"
 
 export const metadata: Metadata = { title: "Mon profil · SportTrack" }
@@ -34,6 +35,7 @@ export default async function ProfilePage() {
         </p>
       </div>
       <ProfileForm profile={profile} zones={zones ?? []} />
+      <ExportCard />
     </div>
   )
 }
