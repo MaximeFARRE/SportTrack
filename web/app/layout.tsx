@@ -17,6 +17,12 @@ export const metadata: Metadata = {
   title: "SportTrack — Gérez votre entraînement",
   description:
     "Suivi multi-sport avec détection de surentraînement, coach IA et intégrations Strava / Garmin.",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "SportTrack",
+  },
 }
 
 export default function RootLayout({
