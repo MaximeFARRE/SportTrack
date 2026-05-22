@@ -1,5 +1,5 @@
--- SportTrack — migrations complètes (générées automatiquement)
--- À coller dans Supabase → SQL Editor
+-- SportTrack — migrations complètes idempotentes (générées automatiquement)
+-- À coller dans Supabase → SQL Editor — peut être relancé sans risque
 
 -- ================================================================
 -- supabase/migrations/20260520000000_initial_schema.sql
@@ -10,8 +10,6 @@
 -- Helper functions
 -- ============================================================================
 
--- Generic updated_at trigger: any table calling this trigger will have its
--- `updated_at` column refreshed on every UPDATE.
 create or replace function public.set_updated_at()
 returns trigger
 language plpgsql
@@ -35,21 +33,24 @@ create table if not exists public.profiles (
   updated_at timestamptz not null default now()
 );
 
+drop trigger if exists profiles_set_updated_at on public.profiles;
 create trigger profiles_set_updated_at
   before update on public.profiles
   for each row execute function public.set_updated_at();
 
--- Row Level Security
 alter table public.profiles enable row level security;
 
+drop policy if exists "profiles_select_own" on public.profiles;
 create policy "profiles_select_own"
   on public.profiles for select
   using (auth.uid() = id);
 
+drop policy if exists "profiles_insert_own" on public.profiles;
 create policy "profiles_insert_own"
   on public.profiles for insert
   with check (auth.uid() = id);
 
+drop policy if exists "profiles_update_own" on public.profiles;
 create policy "profiles_update_own"
   on public.profiles for update
   using (auth.uid() = id);
@@ -88,7 +89,7 @@ create trigger on_auth_user_created
 -- ================================================================
 -- Phase 1: athlete profile + HR zones
 
-create table public.athlete_profiles (
+create table if not exists public.athlete_profiles (
   id uuid primary key default gen_random_uuid(),
   user_id uuid unique not null references auth.users on delete cascade,
   first_name text,
@@ -112,22 +113,30 @@ create table public.athlete_profiles (
 
 alter table public.athlete_profiles enable row level security;
 
+drop policy if exists "users_select_own_athlete_profile" on public.athlete_profiles;
 create policy "users_select_own_athlete_profile" on athlete_profiles
   for select using (auth.uid() = user_id);
+
+drop policy if exists "users_insert_own_athlete_profile" on public.athlete_profiles;
 create policy "users_insert_own_athlete_profile" on athlete_profiles
   for insert with check (auth.uid() = user_id);
+
+drop policy if exists "users_update_own_athlete_profile" on public.athlete_profiles;
 create policy "users_update_own_athlete_profile" on athlete_profiles
   for update using (auth.uid() = user_id);
+
+drop policy if exists "users_delete_own_athlete_profile" on public.athlete_profiles;
 create policy "users_delete_own_athlete_profile" on athlete_profiles
   for delete using (auth.uid() = user_id);
 
+drop trigger if exists athlete_profiles_set_updated_at on public.athlete_profiles;
 create trigger athlete_profiles_set_updated_at
   before update on public.athlete_profiles
   for each row execute function public.set_updated_at();
 
 -- -------------------------------------------------------
 
-create table public.hr_zones (
+create table if not exists public.hr_zones (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users on delete cascade,
   zone_number int not null check (zone_number between 1 and 5),
@@ -144,22 +153,23 @@ create table public.hr_zones (
 
 alter table public.hr_zones enable row level security;
 
+drop policy if exists "users_all_own_hr_zones" on public.hr_zones;
 create policy "users_all_own_hr_zones" on hr_zones
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
+drop trigger if exists hr_zones_set_updated_at on public.hr_zones;
 create trigger hr_zones_set_updated_at
   before update on public.hr_zones
   for each row execute function public.set_updated_at();
 
--- Indexes
-create index idx_athlete_profiles_user_id on public.athlete_profiles (user_id);
-create index idx_hr_zones_user_id on public.hr_zones (user_id);
+create index if not exists idx_athlete_profiles_user_id on public.athlete_profiles (user_id);
+create index if not exists idx_hr_zones_user_id on public.hr_zones (user_id);
 
 -- ================================================================
 -- supabase/migrations/20260521100000_provider_connections.sql
 -- ================================================================
 -- provider_connections: stores OAuth tokens for each user per provider (Strava, Terra…)
-create table public.provider_connections (
+create table if not exists public.provider_connections (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users on delete cascade,
   provider text not null check (provider in ('strava', 'terra')),
@@ -177,16 +187,17 @@ create table public.provider_connections (
 
 alter table public.provider_connections enable row level security;
 
--- Users can view their own connection status (tokens excluded via specific selects in app code)
+drop policy if exists "users_select_own_connections" on public.provider_connections;
 create policy "users_select_own_connections" on provider_connections
   for select using (auth.uid() = user_id);
 
--- Users can logically disconnect (soft delete via is_active=false handled by service role)
+drop policy if exists "users_delete_own_connections" on public.provider_connections;
 create policy "users_delete_own_connections" on provider_connections
   for delete using (auth.uid() = user_id);
 
 -- Service role (FastAPI) handles all inserts/updates (tokens stay server-side)
 
+drop trigger if exists provider_connections_set_updated_at on public.provider_connections;
 create trigger provider_connections_set_updated_at
   before update on provider_connections
   for each row execute function public.set_updated_at();
@@ -195,7 +206,7 @@ create trigger provider_connections_set_updated_at
 -- supabase/migrations/20260521200000_activities.sql
 -- ================================================================
 -- activities: one row per activity per user, across all providers
-create table public.activities (
+create table if not exists public.activities (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users on delete cascade,
   provider text not null,
@@ -235,20 +246,28 @@ create table public.activities (
   unique (user_id, provider, provider_activity_id)
 );
 
-create index activities_user_start on activities (user_id, start_date desc);
-create index activities_user_sport on activities (user_id, sport_type);
+create index if not exists activities_user_start on activities (user_id, start_date desc);
+create index if not exists activities_user_sport on activities (user_id, sport_type);
 
 alter table public.activities enable row level security;
 
+drop policy if exists "users_select_own_activities" on public.activities;
 create policy "users_select_own_activities" on activities
   for select using (auth.uid() = user_id);
+
+drop policy if exists "users_insert_own_activities" on public.activities;
 create policy "users_insert_own_activities" on activities
   for insert with check (auth.uid() = user_id);
+
+drop policy if exists "users_update_own_activities" on public.activities;
 create policy "users_update_own_activities" on activities
   for update using (auth.uid() = user_id);
+
+drop policy if exists "users_delete_own_activities" on public.activities;
 create policy "users_delete_own_activities" on activities
   for delete using (auth.uid() = user_id);
 
+drop trigger if exists activities_set_updated_at on public.activities;
 create trigger activities_set_updated_at
   before update on activities
   for each row execute function public.set_updated_at();
@@ -260,7 +279,7 @@ create trigger activities_set_updated_at
 -- Single-row table (id = 1 enforced by check constraint).
 -- Accessed exclusively via service_role key — no RLS for regular users.
 
-create table public.strava_config (
+create table if not exists public.strava_config (
   id            int       primary key default 1 check (id = 1),
   client_id     text      not null default '',
   client_secret text      not null default '',
@@ -272,7 +291,7 @@ create table public.strava_config (
 -- Regular anon/authenticated users cannot read client_secret.
 
 -- Seed the single config row so upserts always hit an existing row.
-insert into public.strava_config (id) values (1);
+insert into public.strava_config (id) values (1) on conflict (id) do nothing;
 
 -- ================================================================
 -- supabase/migrations/20260521400000_daily_metrics.sql
@@ -280,7 +299,7 @@ insert into public.strava_config (id) values (1);
 -- Daily metrics per user per day.
 -- Populated by Terra webhooks (Garmin/Polar/Fitbit) and activity aggregation.
 
-create table public.daily_metrics (
+create table if not exists public.daily_metrics (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users on delete cascade,
   metric_date date not null,
@@ -321,17 +340,19 @@ create table public.daily_metrics (
   unique (user_id, metric_date)
 );
 
-create index daily_metrics_user_date on public.daily_metrics (user_id, metric_date desc);
+create index if not exists daily_metrics_user_date on public.daily_metrics (user_id, metric_date desc);
 
 alter table public.daily_metrics enable row level security;
 
+drop policy if exists "users_select_own_daily" on public.daily_metrics;
 create policy "users_select_own_daily" on public.daily_metrics
   for select using (auth.uid() = user_id);
 
--- service_role handles writes (Terra webhooks go through FastAPI with service_role key)
+drop policy if exists "service_role_all_daily" on public.daily_metrics;
 create policy "service_role_all_daily" on public.daily_metrics
   for all using (auth.role() = 'service_role');
 
+drop trigger if exists daily_metrics_set_updated_at on public.daily_metrics;
 create trigger daily_metrics_set_updated_at
   before update on public.daily_metrics
   for each row execute function public.set_updated_at();
@@ -340,7 +361,7 @@ create trigger daily_metrics_set_updated_at
 -- supabase/migrations/20260521500000_planned_sessions.sql
 -- ================================================================
 -- planned_sessions: one row per planned training session per user
-create table public.planned_sessions (
+create table if not exists public.planned_sessions (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users on delete cascade,
   planned_date date not null,
@@ -359,10 +380,11 @@ create table public.planned_sessions (
   updated_at timestamptz default now() not null
 );
 
-create index planned_sessions_user_date on public.planned_sessions (user_id, planned_date);
+create index if not exists planned_sessions_user_date on public.planned_sessions (user_id, planned_date);
 
 alter table public.planned_sessions enable row level security;
 
+drop policy if exists "users_all_own_planned" on public.planned_sessions;
 create policy "users_all_own_planned" on public.planned_sessions
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
@@ -384,12 +406,12 @@ begin
     and sport_type = new.sport_type
     and actual_activity_id is null
     and status = 'planned'
-  -- Match the closest planned session if multiple exist
   limit 1;
   return new;
 end;
 $$ language plpgsql security definer;
 
+drop trigger if exists activities_match_planned on public.activities;
 create trigger activities_match_planned
   after insert on public.activities
   for each row execute function public.match_planned_to_actual();
@@ -398,7 +420,7 @@ create trigger activities_match_planned
 -- supabase/migrations/20260521600000_risk_assessments.sql
 -- ================================================================
 -- risk_assessments: one row per user per day, computed by the FastAPI scheduler
-create table public.risk_assessments (
+create table if not exists public.risk_assessments (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users on delete cascade,
   assessment_date date not null,
@@ -411,11 +433,11 @@ create table public.risk_assessments (
 
 alter table public.risk_assessments enable row level security;
 
--- Users can read their own assessments
+drop policy if exists "users_select_own_risk" on public.risk_assessments;
 create policy "users_select_own_risk" on public.risk_assessments
   for select using (auth.uid() = user_id);
 
--- Only service role can write (FastAPI scheduler uses service_role key)
+drop policy if exists "service_role_all_risk" on public.risk_assessments;
 create policy "service_role_all_risk" on public.risk_assessments
   for all using (auth.role() = 'service_role');
 
@@ -423,7 +445,7 @@ create policy "service_role_all_risk" on public.risk_assessments
 -- supabase/migrations/20260522000000_injuries.sql
 -- ================================================================
 -- injuries: user-managed injury log with RLS
-create table public.injuries (
+create table if not exists public.injuries (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users on delete cascade,
   body_zone text not null,
@@ -440,6 +462,7 @@ create table public.injuries (
 
 alter table public.injuries enable row level security;
 
+drop policy if exists "users_all_own_injuries" on public.injuries;
 create policy "users_all_own_injuries" on public.injuries
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 

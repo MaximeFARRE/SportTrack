@@ -1,5 +1,5 @@
 -- planned_sessions: one row per planned training session per user
-create table public.planned_sessions (
+create table if not exists public.planned_sessions (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users on delete cascade,
   planned_date date not null,
@@ -18,10 +18,11 @@ create table public.planned_sessions (
   updated_at timestamptz default now() not null
 );
 
-create index planned_sessions_user_date on public.planned_sessions (user_id, planned_date);
+create index if not exists planned_sessions_user_date on public.planned_sessions (user_id, planned_date);
 
 alter table public.planned_sessions enable row level security;
 
+drop policy if exists "users_all_own_planned" on public.planned_sessions;
 create policy "users_all_own_planned" on public.planned_sessions
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
@@ -43,12 +44,12 @@ begin
     and sport_type = new.sport_type
     and actual_activity_id is null
     and status = 'planned'
-  -- Match the closest planned session if multiple exist
   limit 1;
   return new;
 end;
 $$ language plpgsql security definer;
 
+drop trigger if exists activities_match_planned on public.activities;
 create trigger activities_match_planned
   after insert on public.activities
   for each row execute function public.match_planned_to_actual();
