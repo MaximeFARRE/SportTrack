@@ -469,3 +469,13 @@ drop policy if exists "users_all_own_injuries" on public.injuries;
 create policy "users_all_own_injuries" on public.injuries
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
+-- ================================================================
+-- supabase/migrations/20260523000000_admin_column.sql
+-- ================================================================
+-- Add is_admin flag to profiles.
+-- Set manually in Supabase SQL Editor for your own account:
+--   UPDATE public.profiles SET is_admin = true WHERE email = 'ton@email.com';
+
+alter table public.profiles
+  add column if not exists is_admin boolean not null default false;
+

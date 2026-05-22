@@ -1,7 +1,8 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { useRef, useState } from "react"
+import { useRef, useState, useTransition } from "react"
+import { CheckCircle, Loader2, Webhook } from "lucide-react"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
@@ -9,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
-import { saveStravaConfig, type StravaConfigData } from "./actions"
+import { registerStravaWebhook, saveStravaConfig, type StravaConfigData } from "./actions"
 
 interface Props {
   initialConfig: StravaConfigData
@@ -18,6 +19,8 @@ interface Props {
 export function StravaConfigForm({ initialConfig }: Props) {
   const router = useRouter()
   const [saving, setSaving] = useState(false)
+  const [isPendingWebhook, startWebhook] = useTransition()
+  const [webhookOk, setWebhookOk] = useState(false)
   const formRef = useRef<HTMLFormElement>(null)
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -33,58 +36,111 @@ export function StravaConfigForm({ initialConfig }: Props) {
     }
   }
 
+  function handleRegisterWebhook() {
+    startWebhook(async () => {
+      const result = await registerStravaWebhook()
+      if (result.error) {
+        toast.error(`Webhook : ${result.error}`)
+      } else {
+        setWebhookOk(true)
+        toast.success(
+          result.subscription_id
+            ? `Webhook enregistré (ID ${result.subscription_id})`
+            : "Webhook enregistré avec succès",
+        )
+      }
+    })
+  }
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-lg">Identifiants Strava</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <form ref={formRef} onSubmit={handleSubmit} className="space-y-5">
-          <div className="space-y-2">
-            <Label htmlFor="client_id">Client ID</Label>
-            <Input
-              id="client_id"
-              name="client_id"
-              placeholder="185192"
-              defaultValue={initialConfig.client_id}
-              autoComplete="off"
-            />
-          </div>
+    <div className="space-y-6">
+      {/* Credentials form */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Identifiants Strava</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form ref={formRef} onSubmit={handleSubmit} className="space-y-5">
+            <div className="space-y-2">
+              <Label htmlFor="client_id">Client ID</Label>
+              <Input
+                id="client_id"
+                name="client_id"
+                placeholder="185192"
+                defaultValue={initialConfig.client_id}
+                autoComplete="off"
+              />
+            </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="client_secret">Client Secret</Label>
-            <Input
-              id="client_secret"
-              name="client_secret"
-              type="password"
-              placeholder="••••••••••••••••"
-              defaultValue={initialConfig.client_secret}
-              autoComplete="new-password"
-            />
-            <p className="text-xs text-muted-foreground">
-              Stocké côté serveur — jamais exposé au navigateur.
-            </p>
-          </div>
+            <div className="space-y-2">
+              <Label htmlFor="client_secret">Client Secret</Label>
+              <Input
+                id="client_secret"
+                name="client_secret"
+                type="password"
+                placeholder="••••••••••••••••"
+                defaultValue={initialConfig.client_secret}
+                autoComplete="new-password"
+              />
+              <p className="text-xs text-muted-foreground">
+                Stocké côté serveur — jamais exposé au navigateur.
+              </p>
+            </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="webhook_verify_token">Webhook Verify Token</Label>
-            <Input
-              id="webhook_verify_token"
-              name="webhook_verify_token"
-              placeholder="mon-token-secret-webhook"
-              defaultValue={initialConfig.webhook_verify_token}
-              autoComplete="off"
-            />
-            <p className="text-xs text-muted-foreground">
-              Valeur libre que vous avez choisie lors de l&apos;enregistrement du webhook Strava.
-            </p>
-          </div>
+            <div className="space-y-2">
+              <Label htmlFor="webhook_verify_token">Webhook Verify Token</Label>
+              <Input
+                id="webhook_verify_token"
+                name="webhook_verify_token"
+                placeholder="mon-token-secret-webhook"
+                defaultValue={initialConfig.webhook_verify_token}
+                autoComplete="off"
+              />
+              <p className="text-xs text-muted-foreground">
+                Valeur libre que vous choisissez — utilisée pour valider le webhook Strava.
+              </p>
+            </div>
 
-          <Button type="submit" disabled={saving}>
-            {saving ? "Enregistrement…" : "Enregistrer"}
+            <Button type="submit" disabled={saving}>
+              {saving ? "Enregistrement…" : "Enregistrer"}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+
+      {/* Webhook registration */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Webhook Strava</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Enregistre le webhook auprès de Strava pour recevoir les nouvelles activités en temps
+            réel. À faire <strong>une seule fois</strong> après avoir enregistré tes identifiants
+            ci-dessus.
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Callback URL enregistrée :{" "}
+            <code className="rounded bg-muted px-1 py-0.5 text-foreground">
+              {process.env.NEXT_PUBLIC_BASE_URL ?? "…"}/api/strava/webhook
+            </code>
+          </p>
+          <Button
+            variant="outline"
+            onClick={handleRegisterWebhook}
+            disabled={isPendingWebhook || webhookOk}
+          >
+            {isPendingWebhook ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : webhookOk ? (
+              <CheckCircle className="mr-2 h-4 w-4 text-green-500" />
+            ) : (
+              <Webhook className="mr-2 h-4 w-4" />
+            )}
+            {webhookOk ? "Webhook actif" : "Enregistrer le webhook"}
           </Button>
-        </form>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+    </div>
   )
 }
