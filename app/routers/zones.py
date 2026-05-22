@@ -1,10 +1,11 @@
 """HR zones router.
 
 Endpoints:
-  GET  /zones                     — list current user's zones (JWT auth)
-  PATCH /zones/{zone_number}      — manually override one zone (JWT auth)
-  POST /zones/reset               — recompute from FC max, clear custom flags (JWT auth)
-  POST /internal/regenerate-zones — called by Next.js after profile save (internal secret)
+  GET  /zones                                — list current user's zones (JWT auth)
+  PATCH /zones/{zone_number}                 — manually override one zone (JWT auth)
+  POST /zones/reset                          — recompute from FC max, clear custom flags (JWT auth)
+  POST /zones/activities/{id}/compute        — compute time-in-zones for one activity (JWT auth)
+  POST /internal/regenerate-zones            — called by Next.js after profile save (internal secret)
 """
 from __future__ import annotations
 
@@ -17,6 +18,7 @@ from supabase import create_client
 from app.auth.supabase_auth import get_current_user_id, require_internal_secret
 from app.config import settings
 from app.services.hr_zones_service import compute_zones_from_hr_max, regenerate_zones_for_user
+from app.services.intensity_distribution_service import compute_time_in_zones
 
 router = APIRouter(prefix="/zones", tags=["zones"])
 internal_router = APIRouter(prefix="/internal", tags=["internal"])
@@ -85,6 +87,23 @@ def reset_zones(user_id: UUID = Depends(get_current_user_id)) -> dict:
         )
     regenerate_zones_for_user(user_id, profile.data["hr_max"], client)
     return {"regenerated": True}
+
+
+@router.post("/activities/{activity_id}/compute", status_code=status.HTTP_200_OK)
+def compute_activity_zones(
+    activity_id: str,
+    user_id: UUID = Depends(get_current_user_id),
+) -> dict:
+    """Fetch Strava HR stream for the activity and compute time-in-zones.
+
+    Returns the zones list or {"zones": null} when computation is not possible
+    (non-Strava activity, missing token, or no HR stream).
+    """
+    try:
+        zones = compute_time_in_zones(str(user_id), activity_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    return {"activity_id": activity_id, "zones": zones}
 
 
 # ── Internal route ────────────────────────────────────────────────────────────
