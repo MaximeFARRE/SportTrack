@@ -11,7 +11,18 @@
       "Bash(python -m pytest tests/test_injury_service.py -v)",
       "Bash(python -m pytest)",
       "PowerShell(supabase --version 2>&1)",
-      "Bash(python -m pytest tests/test_intensity_service.py -v)"
+      "Bash(python -m pytest tests/test_intensity_service.py -v)",
+      "Bash(python -m pytest tests/test_ai_export_service.py -v)",
+      "Bash(python -m pytest tests/test_startup.py -v)",
+      "Bash(python -m pytest --tb=no -q)",
+      "Bash(python -m ruff --version)",
+      "Bash(python -m mypy --version)",
+      "Bash(cat next.config.ts)",
+      "Bash(cat next.config.js)",
+      "Bash(python -m ruff check app/ --fix)",
+      "Bash(python -m ruff check app/)",
+      "Bash(npm install *)",
+      "Bash(npx vitest *)"
     ]
   }
 }
