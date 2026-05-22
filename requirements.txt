@@ -24,5 +24,9 @@ httpx
 # Supabase Python client (service-role operations: zone upsert, etc.)
 supabase
 
+# Scheduler
+apscheduler
+
 # Testing
 pytest
+sentry-sdk[fastapi]

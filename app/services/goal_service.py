@@ -10,7 +10,6 @@ from app.services.gamification_service import build_personal_gamification
 from app.schemas.goal import GoalCreate, GoalUpdate
 from app.services.metrics_service import get_dashboard_summary
 from app.services._sport_helpers import (
-    SPORT_COEFFICIENTS,
     _activity_date,
     _activity_load,
     _normalize_sport_type,
@@ -402,7 +401,7 @@ def _compute_goal_campaign(session: Session, goal: Goal) -> dict[str, Any]:
         raise LookupError("Athlete introuvable pour cet objectif.")
 
     today = datetime.now(UTC).date()
-    start_date = _safe_utc_datetime(goal.created_at).date()
+    start_date = goal.created_at.date() if isinstance(goal.created_at, datetime) else goal.created_at
     end_date = _goal_end_date(goal=goal, config=config, start_date=start_date)
     elapsed_end = min(today, end_date)
 
@@ -465,7 +464,6 @@ def _compute_goal_campaign(session: Session, goal: Goal) -> dict[str, Any]:
     snapshot_7d = dashboard_context.get("snapshot_7d", {})
     fitness_state = dashboard_context.get("fitness_state", {})
     recent_load_7d = float(snapshot_7d.get("training_load", 0.0))
-    recent_regularity = float(snapshot_7d.get("consistency_score", 0.0))
     tsb = float(fitness_state.get("tsb", 0.0))
 
     recent_14_start = today - timedelta(days=13)

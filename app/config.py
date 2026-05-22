@@ -92,5 +92,10 @@ class _Settings:
     def web_base_url(self) -> str:
         return _get("WEB_BASE_URL", "http://localhost:3000")
 
+    # ---------- Monitoring ----------
+    @property
+    def sentry_dsn(self) -> str:
+        return _get("SENTRY_DSN", "")
+
 
 settings = _Settings()

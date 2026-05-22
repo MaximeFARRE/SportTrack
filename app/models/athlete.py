@@ -11,7 +11,7 @@ def utc_now() -> datetime:
 class Athlete(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
 
-    user_id: int = Field(foreign_key="user.id", index=True)
+    user_id: int = Field(index=True)  # FK to legacy user table removed — user table no longer defined as SQLModel
 
     provider: str = Field(default="strava")
     provider_athlete_id: Optional[str] = Field(default=None, index=True)

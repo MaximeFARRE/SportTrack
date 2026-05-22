@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
+import { Analytics } from "@vercel/analytics/next"
 
 import "./globals.css"
 
@@ -17,6 +18,12 @@ export const metadata: Metadata = {
   title: "SportTrack — Gérez votre entraînement",
   description:
     "Suivi multi-sport avec détection de surentraînement, coach IA et intégrations Strava / Garmin.",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "SportTrack",
+  },
 }
 
 export default function RootLayout({
@@ -29,7 +36,10 @@ export default function RootLayout({
       lang="fr"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="flex min-h-full flex-col">{children}</body>
+      <body className="flex min-h-full flex-col">
+        {children}
+        <Analytics />
+      </body>
     </html>
   )
 }

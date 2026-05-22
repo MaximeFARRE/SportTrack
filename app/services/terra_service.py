@@ -19,7 +19,6 @@ import hashlib
 import hmac
 import json
 import urllib.request
-from datetime import date
 from typing import Any
 from uuid import UUID
 

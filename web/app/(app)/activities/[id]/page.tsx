@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { FeedbackSection } from "@/components/activity/feedback-section"
+import { ZoneBars } from "@/components/activity/zone-bars"
+import type { ZoneEntry } from "@/components/activity/zone-bars"
 
 export const metadata: Metadata = { title: "Détail activité · SportTrack" }
 
@@ -169,6 +171,20 @@ export default async function ActivityDetailPage({
             <DetailRow
               label="Puissance moyenne"
               value={activity.average_power != null ? `${Math.round(activity.average_power)} W` : null}
+            />
+          </CardContent>
+        </Card>
+      )}
+
+      {Array.isArray(activity.time_in_zones_json) && activity.time_in_zones_json.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Zones d&apos;intensité FC</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ZoneBars
+              zones={activity.time_in_zones_json as unknown as ZoneEntry[]}
+              showPolarization
             />
           </CardContent>
         </Card>

@@ -351,6 +351,121 @@ export type Database = {
         }
         Relationships: []
       }
+      risk_assessments: {
+        Row: {
+          id: string
+          user_id: string
+          assessment_date: string
+          score: number
+          level: "none" | "low" | "moderate" | "high" | "critical"
+          reasons: string[]
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          assessment_date: string
+          score: number
+          level: "none" | "low" | "moderate" | "high" | "critical"
+          reasons?: string[]
+        }
+        Update: {
+          score?: number
+          level?: "none" | "low" | "moderate" | "high" | "critical"
+          reasons?: string[]
+        }
+        Relationships: []
+      }
+      injuries: {
+        Row: {
+          id: string
+          user_id: string
+          body_zone: string
+          injury_type: "muscular" | "tendinous" | "bone" | "ligament" | "other" | null
+          severity: number | null
+          start_date: string
+          end_date: string | null
+          description: string | null
+          treatment: string | null
+          related_activity_id: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          body_zone: string
+          injury_type?: "muscular" | "tendinous" | "bone" | "ligament" | "other" | null
+          severity?: number | null
+          start_date: string
+          end_date?: string | null
+          description?: string | null
+          treatment?: string | null
+          related_activity_id?: string | null
+        }
+        Update: {
+          body_zone?: string
+          injury_type?: "muscular" | "tendinous" | "bone" | "ligament" | "other" | null
+          severity?: number | null
+          start_date?: string
+          end_date?: string | null
+          description?: string | null
+          treatment?: string | null
+          related_activity_id?: string | null
+        }
+        Relationships: []
+      }
+      planned_sessions: {
+        Row: {
+          id: string
+          user_id: string
+          planned_date: string
+          planned_time: string | null
+          sport_type: string
+          session_type: string
+          planned_duration_min: number | null
+          planned_distance_km: number | null
+          planned_load: number | null
+          description: string | null
+          target_zones: number[] | null
+          status: "planned" | "completed" | "skipped" | "modified"
+          actual_activity_id: string | null
+          completion_score: number | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          planned_date: string
+          planned_time?: string | null
+          sport_type: string
+          session_type: string
+          planned_duration_min?: number | null
+          planned_distance_km?: number | null
+          planned_load?: number | null
+          description?: string | null
+          target_zones?: number[] | null
+          status?: "planned" | "completed" | "skipped" | "modified"
+          actual_activity_id?: string | null
+          completion_score?: number | null
+        }
+        Update: {
+          planned_date?: string
+          planned_time?: string | null
+          sport_type?: string
+          session_type?: string
+          planned_duration_min?: number | null
+          planned_distance_km?: number | null
+          planned_load?: number | null
+          description?: string | null
+          target_zones?: number[] | null
+          status?: "planned" | "completed" | "skipped" | "modified"
+          actual_activity_id?: string | null
+          completion_score?: number | null
+        }
+        Relationships: []
+      }
       strava_config: {
         Row: {
           id: 1
