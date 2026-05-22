@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(mkdir \"C:\\\\Users\\\\maxim\\\\.claude\\\\memory\")",
+      "Bash(pip install *)",
+      "Bash(pytest tests/ -q)",
+      "Bash(python -m pytest tests/ -q)",
+      "Bash(npx tsc *)",
+      "Bash(python -m pytest tests/test_injury_service.py -v)",
+      "Bash(python -m pytest)",
+      "PowerShell(supabase --version 2>&1)",
+      "Bash(python -m pytest tests/test_intensity_service.py -v)"
+    ]
+  }
+}
