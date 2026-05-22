@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import Link from "next/link"
+import { redirect } from "next/navigation"
 import { format, startOfWeek, subDays } from "date-fns"
 import { fr } from "date-fns/locale"
 import { Activity, Moon, TrendingUp, Zap } from "lucide-react"
@@ -74,6 +75,8 @@ export default async function DashboardPage() {
         .eq("assessment_date", today)
         .maybeSingle(),
     ])
+
+  if (!athleteResult.data) redirect("/onboarding")
 
   const displayName = profileResult.data?.display_name
   const firstName = displayName?.split(" ")[0] ?? "Sportif"
