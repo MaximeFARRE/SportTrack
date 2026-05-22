@@ -1,10 +1,20 @@
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
+import sentry_sdk
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sentry_sdk.integrations.fastapi import FastApiIntegration
 
 from app.config import settings
+
+if settings.sentry_dsn:
+    sentry_sdk.init(
+        dsn=settings.sentry_dsn,
+        integrations=[FastApiIntegration()],
+        traces_sample_rate=0.2,
+        send_default_pii=False,
+    )
 from app.db import create_db_and_tables
 from app.routers.export import router as export_router
 from app.routers.injuries import router as injuries_router

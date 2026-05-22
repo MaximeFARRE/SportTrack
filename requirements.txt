@@ -29,3 +29,4 @@ apscheduler
 
 # Testing
 pytest
+sentry-sdk[fastapi]
