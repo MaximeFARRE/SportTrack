@@ -1,7 +1,6 @@
-from datetime import date
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 
 from app.auth.supabase_auth import get_current_user_id, require_internal_secret
 from app.services.overtraining_detection import assess_and_persist, compute_risk

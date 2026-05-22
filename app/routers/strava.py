@@ -25,7 +25,6 @@ from app.services.strava_service import (
     exchange_code_for_token,
     fetch_athlete_activities,
     get_strava_config,
-    get_strava_connection,
     upsert_strava_connection,
 )
 

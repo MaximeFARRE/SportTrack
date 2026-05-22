@@ -17,7 +17,7 @@ from supabase import create_client
 
 from app.auth.supabase_auth import get_current_user_id, require_internal_secret
 from app.config import settings
-from app.services.hr_zones_service import compute_zones_from_hr_max, regenerate_zones_for_user
+from app.services.hr_zones_service import regenerate_zones_for_user
 from app.services.intensity_distribution_service import compute_time_in_zones
 
 router = APIRouter(prefix="/zones", tags=["zones"])
