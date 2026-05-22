@@ -1,6 +1,5 @@
 # Web framework
 fastapi
-uvicorn[standard]
 
 # ORM / database
 sqlmodel
@@ -9,10 +8,6 @@ psycopg2-binary
 # Data validation
 pydantic
 python-dotenv
-
-# Frontend
-streamlit
-plotly
 
 # Security
 bcrypt
@@ -23,9 +18,6 @@ httpx
 
 # Supabase Python client (service-role operations: zone upsert, etc.)
 supabase
-
-# Scheduler
-apscheduler
 
 # Testing
 pytest
