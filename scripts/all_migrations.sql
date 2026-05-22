@@ -401,12 +401,15 @@ begin
       (new.duration_sec / 60.0) / nullif(planned_duration_min, 0) * 100
     ),
     updated_at = now()
-  where user_id = new.user_id
-    and planned_date = new.start_date::date
-    and sport_type = new.sport_type
-    and actual_activity_id is null
-    and status = 'planned'
-  limit 1;
+  where id = (
+    select id from public.planned_sessions
+    where user_id = new.user_id
+      and planned_date = new.start_date::date
+      and sport_type = new.sport_type
+      and actual_activity_id is null
+      and status = 'planned'
+    limit 1
+  );
   return new;
 end;
 $$ language plpgsql security definer;
