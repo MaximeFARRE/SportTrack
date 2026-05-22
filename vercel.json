@@ -1,10 +1,21 @@
 {
-  "buildCommand": "cd web && npm install --no-audit --no-fund && npm run build",
-  "outputDirectory": "web/.next",
-  "framework": "nextjs",
-  "installCommand": "echo skip",
-  "rewrites": [
-    { "source": "/api/py/:path*", "destination": "/api/index" }
+  "builds": [
+    {
+      "src": "web/package.json",
+      "use": "@vercel/next"
+    },
+    {
+      "src": "api/index.py",
+      "use": "@vercel/python"
+    },
+    {
+      "src": "api/cron/daily-risk.py",
+      "use": "@vercel/python"
+    },
+    {
+      "src": "api/cron/daily-injury.py",
+      "use": "@vercel/python"
+    }
   ],
   "crons": [
     { "path": "/api/cron/daily-risk",   "schedule": "0 6 * * *" },

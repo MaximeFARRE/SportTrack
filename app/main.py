@@ -27,7 +27,6 @@ from app.routers.zones import router as zones_router
 app = FastAPI(
     title=settings.app_name,
     version=settings.app_version,
-    root_path="/api/py",
 )
 
 app.add_middleware(
