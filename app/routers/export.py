@@ -1,7 +1,8 @@
+from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import JSONResponse, PlainTextResponse
 
 from app.auth.supabase_auth import get_current_user_id
 from app.services.ai_export_service import build_export, to_markdown
@@ -9,12 +10,12 @@ from app.services.ai_export_service import build_export, to_markdown
 router = APIRouter(prefix="/export", tags=["export"])
 
 
-@router.get("/ai-summary")
+@router.get("/ai-summary", response_model=None)
 def get_ai_summary(
     weeks: int = Query(default=8, ge=1, le=52, description="Période en semaines"),
     format: str = Query(default="json", pattern="^(json|markdown)$"),
     user_id: UUID = Depends(get_current_user_id),
-) -> dict | PlainTextResponse:
+) -> Any:
     """Return a structured training summary for LLM consumption.
 
     format=json   → JSON dict ready to paste into a prompt
@@ -23,4 +24,4 @@ def get_ai_summary(
     data = build_export(str(user_id), weeks=weeks)
     if format == "markdown":
         return PlainTextResponse(content=to_markdown(data), media_type="text/markdown")
-    return data
+    return JSONResponse(content=data)
