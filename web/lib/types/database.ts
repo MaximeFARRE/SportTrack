@@ -351,6 +351,31 @@ export type Database = {
         }
         Relationships: []
       }
+      risk_assessments: {
+        Row: {
+          id: string
+          user_id: string
+          assessment_date: string
+          score: number
+          level: "none" | "low" | "moderate" | "high" | "critical"
+          reasons: string[]
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          assessment_date: string
+          score: number
+          level: "none" | "low" | "moderate" | "high" | "critical"
+          reasons?: string[]
+        }
+        Update: {
+          score?: number
+          level?: "none" | "low" | "moderate" | "high" | "critical"
+          reasons?: string[]
+        }
+        Relationships: []
+      }
       planned_sessions: {
         Row: {
           id: string
