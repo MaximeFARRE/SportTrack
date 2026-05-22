@@ -2,7 +2,7 @@
 -- Single-row table (id = 1 enforced by check constraint).
 -- Accessed exclusively via service_role key — no RLS for regular users.
 
-create table public.strava_config (
+create table if not exists public.strava_config (
   id            int       primary key default 1 check (id = 1),
   client_id     text      not null default '',
   client_secret text      not null default '',
@@ -14,4 +14,4 @@ create table public.strava_config (
 -- Regular anon/authenticated users cannot read client_secret.
 
 -- Seed the single config row so upserts always hit an existing row.
-insert into public.strava_config (id) values (1);
+insert into public.strava_config (id) values (1) on conflict (id) do nothing;

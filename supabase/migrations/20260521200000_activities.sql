@@ -1,5 +1,5 @@
 -- activities: one row per activity per user, across all providers
-create table public.activities (
+create table if not exists public.activities (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users on delete cascade,
   provider text not null,
@@ -39,20 +39,28 @@ create table public.activities (
   unique (user_id, provider, provider_activity_id)
 );
 
-create index activities_user_start on activities (user_id, start_date desc);
-create index activities_user_sport on activities (user_id, sport_type);
+create index if not exists activities_user_start on activities (user_id, start_date desc);
+create index if not exists activities_user_sport on activities (user_id, sport_type);
 
 alter table public.activities enable row level security;
 
+drop policy if exists "users_select_own_activities" on public.activities;
 create policy "users_select_own_activities" on activities
   for select using (auth.uid() = user_id);
+
+drop policy if exists "users_insert_own_activities" on public.activities;
 create policy "users_insert_own_activities" on activities
   for insert with check (auth.uid() = user_id);
+
+drop policy if exists "users_update_own_activities" on public.activities;
 create policy "users_update_own_activities" on activities
   for update using (auth.uid() = user_id);
+
+drop policy if exists "users_delete_own_activities" on public.activities;
 create policy "users_delete_own_activities" on activities
   for delete using (auth.uid() = user_id);
 
+drop trigger if exists activities_set_updated_at on public.activities;
 create trigger activities_set_updated_at
   before update on activities
   for each row execute function public.set_updated_at();

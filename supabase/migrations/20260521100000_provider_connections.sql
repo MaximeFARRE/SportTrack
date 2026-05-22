@@ -1,5 +1,5 @@
 -- provider_connections: stores OAuth tokens for each user per provider (Strava, Terra…)
-create table public.provider_connections (
+create table if not exists public.provider_connections (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users on delete cascade,
   provider text not null check (provider in ('strava', 'terra')),
@@ -17,16 +17,17 @@ create table public.provider_connections (
 
 alter table public.provider_connections enable row level security;
 
--- Users can view their own connection status (tokens excluded via specific selects in app code)
+drop policy if exists "users_select_own_connections" on public.provider_connections;
 create policy "users_select_own_connections" on provider_connections
   for select using (auth.uid() = user_id);
 
--- Users can logically disconnect (soft delete via is_active=false handled by service role)
+drop policy if exists "users_delete_own_connections" on public.provider_connections;
 create policy "users_delete_own_connections" on provider_connections
   for delete using (auth.uid() = user_id);
 
 -- Service role (FastAPI) handles all inserts/updates (tokens stay server-side)
 
+drop trigger if exists provider_connections_set_updated_at on public.provider_connections;
 create trigger provider_connections_set_updated_at
   before update on provider_connections
   for each row execute function public.set_updated_at();

@@ -1,5 +1,5 @@
 -- injuries: user-managed injury log with RLS
-create table public.injuries (
+create table if not exists public.injuries (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users on delete cascade,
   body_zone text not null,
@@ -16,5 +16,6 @@ create table public.injuries (
 
 alter table public.injuries enable row level security;
 
+drop policy if exists "users_all_own_injuries" on public.injuries;
 create policy "users_all_own_injuries" on public.injuries
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);

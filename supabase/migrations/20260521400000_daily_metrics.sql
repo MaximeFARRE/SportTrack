@@ -1,7 +1,7 @@
 -- Daily metrics per user per day.
 -- Populated by Terra webhooks (Garmin/Polar/Fitbit) and activity aggregation.
 
-create table public.daily_metrics (
+create table if not exists public.daily_metrics (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users on delete cascade,
   metric_date date not null,
@@ -42,17 +42,19 @@ create table public.daily_metrics (
   unique (user_id, metric_date)
 );
 
-create index daily_metrics_user_date on public.daily_metrics (user_id, metric_date desc);
+create index if not exists daily_metrics_user_date on public.daily_metrics (user_id, metric_date desc);
 
 alter table public.daily_metrics enable row level security;
 
+drop policy if exists "users_select_own_daily" on public.daily_metrics;
 create policy "users_select_own_daily" on public.daily_metrics
   for select using (auth.uid() = user_id);
 
--- service_role handles writes (Terra webhooks go through FastAPI with service_role key)
+drop policy if exists "service_role_all_daily" on public.daily_metrics;
 create policy "service_role_all_daily" on public.daily_metrics
   for all using (auth.role() = 'service_role');
 
+drop trigger if exists daily_metrics_set_updated_at on public.daily_metrics;
 create trigger daily_metrics_set_updated_at
   before update on public.daily_metrics
   for each row execute function public.set_updated_at();
