@@ -1,9 +1,11 @@
 import type { Metadata } from "next"
 import Link from "next/link"
 import { Suspense } from "react"
+import { Activity, SlidersHorizontal } from "lucide-react"
 
 import { createClient } from "@/lib/supabase/server"
 import { Button } from "@/components/ui/button"
+import { EmptyState } from "@/components/ui/empty-state"
 import { ActivityCard } from "@/components/activity/activity-card"
 
 import { ActivitiesFilters } from "./activities-filters"
@@ -127,22 +129,29 @@ export default async function ActivitiesPage({
       </Suspense>
 
       {!activities || activities.length === 0 ? (
-        <div className="rounded-lg border border-dashed p-10 text-center">
-          <p className="text-sm text-muted-foreground">
-            Aucune activité trouvée.{" "}
-            {!sport && !period ? (
-              <>
-                Connectez Strava depuis la page{" "}
-                <Link href="/connections" className="underline underline-offset-2">
-                  Connexions
-                </Link>{" "}
-                pour importer vos activités.
-              </>
-            ) : (
-              "Essayez d'élargir les filtres."
-            )}
-          </p>
-        </div>
+        !sport && !period ? (
+          <EmptyState
+            icon={Activity}
+            title="Aucune activité pour l'instant"
+            description="Connectez Strava pour importer vos activités, ou ajoutez-en une manuellement."
+            action={
+              <div className="flex flex-wrap justify-center gap-2">
+                <Link href="/connections">
+                  <Button variant="default" size="sm">Connecter Strava</Button>
+                </Link>
+                <Link href="/activities/new">
+                  <Button variant="outline" size="sm">Ajouter manuellement</Button>
+                </Link>
+              </div>
+            }
+          />
+        ) : (
+          <EmptyState
+            icon={SlidersHorizontal}
+            title="Aucun résultat"
+            description="Aucune activité ne correspond aux filtres sélectionnés. Essayez d'élargir la période ou de changer de sport."
+          />
+        )
       ) : (
         <div className="space-y-2">
           {activities.map((activity) => (

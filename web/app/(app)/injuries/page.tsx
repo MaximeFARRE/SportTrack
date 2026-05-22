@@ -1,11 +1,12 @@
 import type { Metadata } from "next"
 import { format, parseISO } from "date-fns"
 import { fr } from "date-fns/locale"
-import { AlertTriangle, CheckCircle2, HeartPulse } from "lucide-react"
+import { AlertTriangle, CheckCircle2, HeartPulse, ShieldCheck } from "lucide-react"
 
 import { createClient } from "@/lib/supabase/server"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { EmptyState } from "@/components/ui/empty-state"
 
 import { InjuryActions } from "./injury-actions"
 import { InjuryFormToggle } from "./injury-form-toggle"
@@ -121,26 +122,36 @@ export default async function InjuriesPage() {
         <InjuryFormToggle />
       </div>
 
-      {/* Blessures actives */}
-      <section className="space-y-3">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          En cours ({active.length})
-        </h2>
-        {active.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Aucune blessure active.</p>
-        ) : (
-          active.map((i) => <InjuryCard key={i.id} injury={i} />)
-        )}
-      </section>
+      {active.length === 0 && historical.length === 0 ? (
+        <EmptyState
+          icon={ShieldCheck}
+          title="Aucune blessure enregistrée"
+          description="Tout va bien ! Signalez une blessure dès qu'elle survient pour en suivre l'évolution."
+        />
+      ) : (
+        <>
+          {/* Blessures actives */}
+          <section className="space-y-3">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              En cours ({active.length})
+            </h2>
+            {active.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Aucune blessure active.</p>
+            ) : (
+              active.map((i) => <InjuryCard key={i.id} injury={i} />)
+            )}
+          </section>
 
-      {/* Historique */}
-      {historical.length > 0 && (
-        <section className="space-y-3">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-            Historique ({historical.length})
-          </h2>
-          {historical.map((i) => <InjuryCard key={i.id} injury={i} />)}
-        </section>
+          {/* Historique */}
+          {historical.length > 0 && (
+            <section className="space-y-3">
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                Historique ({historical.length})
+              </h2>
+              {historical.map((i) => <InjuryCard key={i.id} injury={i} />)}
+            </section>
+          )}
+        </>
       )}
     </div>
   )
