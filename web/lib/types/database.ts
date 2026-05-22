@@ -376,6 +376,45 @@ export type Database = {
         }
         Relationships: []
       }
+      injuries: {
+        Row: {
+          id: string
+          user_id: string
+          body_zone: string
+          injury_type: "muscular" | "tendinous" | "bone" | "ligament" | "other" | null
+          severity: number | null
+          start_date: string
+          end_date: string | null
+          description: string | null
+          treatment: string | null
+          related_activity_id: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          body_zone: string
+          injury_type?: "muscular" | "tendinous" | "bone" | "ligament" | "other" | null
+          severity?: number | null
+          start_date: string
+          end_date?: string | null
+          description?: string | null
+          treatment?: string | null
+          related_activity_id?: string | null
+        }
+        Update: {
+          body_zone?: string
+          injury_type?: "muscular" | "tendinous" | "bone" | "ligament" | "other" | null
+          severity?: number | null
+          start_date?: string
+          end_date?: string | null
+          description?: string | null
+          treatment?: string | null
+          related_activity_id?: string | null
+        }
+        Relationships: []
+      }
       planned_sessions: {
         Row: {
           id: string
