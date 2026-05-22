@@ -7,6 +7,8 @@ import { Activity, Moon, TrendingUp, Zap } from "lucide-react"
 import { createClient } from "@/lib/supabase/server"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { CtlAtlChart } from "@/components/dashboard/ctl-atl-chart"
+import { ZoneBars, aggregateZones } from "@/components/activity/zone-bars"
+import type { ZoneEntry } from "@/components/activity/zone-bars"
 
 export const metadata: Metadata = { title: "Tableau de bord · SportTrack" }
 
@@ -55,7 +57,7 @@ export default async function DashboardPage() {
       supabase.from("athlete_profiles").select("primary_sport, weekly_target_hours").eq("user_id", user.id).maybeSingle(),
       supabase
         .from("activities")
-        .select("id, name, sport_type, start_date, duration_sec, distance_m")
+        .select("id, name, sport_type, start_date, duration_sec, distance_m, time_in_zones_json")
         .eq("user_id", user.id)
         .gte("start_date", weekStart.toISOString())
         .order("start_date", { ascending: false }),
@@ -85,6 +87,12 @@ export default async function DashboardPage() {
     ? { score: riskData.score, level: riskData.level as RiskLevel, reasons: riskData.reasons as string[] }
     : getFallbackScore(latestMetric?.training_readiness ?? null)
   const { label: formLabel, advice: formAdvice, barClass: formBarClass } = LEVEL_CONFIG[formLevel]
+
+  const weekZonesArrays: ZoneEntry[][] = weekActivities
+    .map((a) => a.time_in_zones_json)
+    .filter((z) => Array.isArray(z) && z.length > 0)
+    .map((z) => z as unknown as ZoneEntry[])
+  const weekZones = weekZonesArrays.length > 0 ? aggregateZones(weekZonesArrays) : null
 
   const weekDuration = weekActivities.reduce((sum, a) => sum + (a.duration_sec ?? 0), 0)
   const weekLoad = recentMetrics
@@ -315,23 +323,25 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Placeholder distribution zones */}
+        {/* Zone distribution this week */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-base font-medium">
-              📈 Distribution zones
+              📈 Zones cette semaine
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-muted-foreground">
-              Connectez Strava ou Garmin pour voir la répartition de vos zones d&apos;effort.
-            </p>
-            <Link
-              href="/connections"
-              className="mt-2 inline-block text-sm underline text-primary"
-            >
-              Configurer les connexions
-            </Link>
+            {weekZones ? (
+              <ZoneBars zones={weekZones} showPolarization />
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Pas encore de données de zones.{" "}
+                <Link href="/connections" className="underline text-primary">
+                  Connectez Strava
+                </Link>{" "}
+                et calculez les zones depuis le détail d&apos;une activité.
+              </p>
+            )}
           </CardContent>
         </Card>
       </div>
