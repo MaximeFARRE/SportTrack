@@ -1,19 +1,20 @@
 # Plan d'exécution — Éliminer FastAPI, Vercel Cron, nettoyage repo
 
 **Cible :** stack 100 % Next.js + Supabase, déployé sur Vercel (Root Directory = `web`). Aucun nouveau backend séparé : toute logique remplaçant FastAPI doit rester dans des Route Handlers, Server Actions ou modules server-only Next.js.
-**Branche de travail :** créer `feat/eliminate-fastapi` depuis `pivot/v2`. Chaque phase = 1 commit minimum, à pusher au fil de l'eau.
+**Branche de travail :** utiliser la branche validée par le propriétaire du projet. Ne jamais créer de branche sans accord explicite. Chaque sous-phase = 1 commit minimum, à pusher au fil de l'eau.
 
 ---
 
 ## Règles transverses pour l'agent qui exécute
 
-1. **Une phase = un commit minimum** au format Conventional Commits.
-2. **Ne jamais commit sur `main`.** Toujours sur `feat/eliminate-fastapi`, PR vers `pivot/v2`.
+1. **Une sous-phase = un commit minimum** au format Conventional Commits. Exemple : A.1, A.2, B.0, B.1, etc. Si une sous-phase ne modifie aucun fichier, le noter dans le commit de la sous-phase suivante.
+2. **Ne jamais commit sur `main`.** Travailler uniquement sur une branche validée par le propriétaire du projet, PR vers `pivot/v2`.
 3. **Toutes les fonctions de remplacement** vont dans `web/lib/server/` (côté serveur uniquement) ou `web/lib/compute/` (pure math).
 4. **Service-role Supabase client** : utiliser `createServiceClient()` depuis `web/lib/supabase/service.ts` (existe déjà) pour les opérations qui doivent bypasser RLS (crons).
 5. **Vérification après chaque phase :** lancer `npm run build` dans `web/` doit réussir, et la liste de routes générée doit contenir les nouvelles routes API ajoutées.
 6. **Aucune dépendance Python ne doit subsister** à la fin de la Phase H.
 7. **Ne pas supprimer FastAPI avant validation production** des remplacements Strava, Terra, export IA et crons. La Phase F est un couperet final, pas une étape de développement.
+8. **Migrations Supabase manuelles** : toute requête SQL à exécuter dans Supabase doit être ajoutée ou actualisée dans `docs/supabase_manual_migrations.sql` au moment de la sous-phase concernée. Objectif : à la fin du plan, ce fichier doit pouvoir être copié-collé dans l'éditeur SQL Supabase.
 
 ---
 
@@ -177,7 +178,7 @@ describe("classifyHr", () => {
 cd web && npm run test -- hr-zones && npm run build
 git add web/lib/compute/hr-zones.ts web/lib/server/hr-zones.ts web/app/\(app\)/onboarding/actions.ts web/app/\(app\)/profile/actions.ts web/__tests__/server/hr-zones.test.ts
 git commit -m "feat(zones): port HR zone compute from FastAPI to TypeScript"
-git push origin feat/eliminate-fastapi
+git push origin "$(git branch --show-current)"
 ```
 
 ---
@@ -601,7 +602,7 @@ Créer `web/__tests__/server/strava/sync.test.ts` avec au minimum :
 cd web && npm run test -- strava && npm run build
 git add web/lib/server/strava/ web/lib/server/metrics/ web/app/api/strava/ web/app/\(app\)/connections/actions.ts web/__tests__/server/strava/
 git commit -m "feat(strava): port OAuth, sync, webhook, intensity from FastAPI to TypeScript"
-git push origin feat/eliminate-fastapi
+git push origin "$(git branch --show-current)"
 ```
 
 ---
@@ -697,7 +698,7 @@ Remplacer `forwardToFastApi(body)` par `processTerraWebhook(body)`.
 ```bash
 git add web/lib/server/terra/ web/app/api/terra/webhook/route.ts web/app/\(app\)/connections/terra/connect/route.ts
 git commit -m "feat(terra): port widget session and daily webhook handling"
-git push origin feat/eliminate-fastapi
+git push origin "$(git branch --show-current)"
 ```
 
 ---
@@ -706,7 +707,7 @@ git push origin feat/eliminate-fastapi
 
 ### D.0 — Sécuriser `strava_config` avant suppression FastAPI
 
-Ajouter une migration Supabase qui protège explicitement `strava_config`, car elle contient `client_secret` :
+Ajouter cette requête dans `docs/supabase_manual_migrations.sql`, car `strava_config` contient `client_secret` :
 
 ```sql
 alter table public.strava_config enable row level security;
@@ -718,6 +719,13 @@ create policy "service_role_all_strava_config" on public.strava_config
 ```
 
 Cette migration ne crée pas de nouvelle architecture ; elle ferme seulement une surface sensible.
+
+Commit dédié attendu après cette sous-phase :
+
+```bash
+git add MIGRATION_PLAN.md docs/supabase_manual_migrations.sql
+git commit -m "docs: add Supabase migration checklist for FastAPI removal"
+```
 
 ### D.1 — Algo de risque : `web/lib/server/risk/compute.ts`
 
@@ -905,7 +913,7 @@ Dans `web/app/(app)/injuries/page.tsx` (ou un nouveau composant), remplacer tout
 ```bash
 git add web/lib/server/risk/ web/lib/server/injuries/ web/app/api/cron/ web/vercel.json supabase/migrations/
 git commit -m "feat(cron): port risk and injury detection to TypeScript with Vercel Cron"
-git push origin feat/eliminate-fastapi
+git push origin "$(git branch --show-current)"
 ```
 
 ---
@@ -958,7 +966,7 @@ Remplacer le `fetch(${FASTAPI_URL}/export/ai-summary)` par un appel direct à `b
 ```bash
 git add web/lib/server/export/ web/app/\(app\)/profile/export-actions.ts
 git commit -m "feat(export): port AI summary export from FastAPI to TypeScript"
-git push origin feat/eliminate-fastapi
+git push origin "$(git branch --show-current)"
 ```
 
 ---
@@ -1011,7 +1019,7 @@ Garder :
 
 ```bash
 git commit -m "chore: remove FastAPI backend — fully replaced by Next.js + Supabase"
-git push origin feat/eliminate-fastapi
+git push origin "$(git branch --show-current)"
 ```
 
 ---
@@ -1238,7 +1246,7 @@ git mv AUDIT.md docs/archive/AUDIT.md
 ```bash
 git add AGENTS.md CLAUDE.md README.md web/.env.example docs/
 git commit -m "docs: rewrite for Next.js + Supabase stack post-FastAPI removal"
-git push origin feat/eliminate-fastapi
+git push origin "$(git branch --show-current)"
 ```
 
 ---
@@ -1270,7 +1278,7 @@ Ouvrir la preview URL de la PR, puis :
 ### H.3 — Créer la PR
 
 ```bash
-gh pr create --base pivot/v2 --head feat/eliminate-fastapi \
+gh pr create --base pivot/v2 --head <branche-validée> \
   --title "feat: eliminate FastAPI — full Next.js + Supabase stack" \
   --body "$(cat <<'EOF'
 ## Summary
@@ -1342,8 +1350,8 @@ git revert -m 1 <merge-commit-sha>
 git push origin pivot/v2
 ```
 
-Tant que la branche `feat/eliminate-fastapi` n'est pas supprimée et que `vercel.json.bak` est en backup, on peut tout restaurer.
+Tant que la branche validée n'est pas supprimée et que `vercel.json.bak` est en backup, on peut tout restaurer.
 
 ---
 
-*Plan rédigé pour exécution par un agent de code autonome. Chaque phase est isolée et testable indépendamment.*
+*Plan rédigé pour exécution par un agent de code autonome. Chaque sous-phase est isolée et testable indépendamment.*
