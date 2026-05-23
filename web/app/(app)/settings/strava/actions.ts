@@ -52,8 +52,7 @@ export async function saveStravaConfig(
   const service = createServiceClient()
   const { error } = await service
     .from("strava_config")
-    .update({ client_id, client_secret, webhook_verify_token })
-    .eq("id", 1)
+    .upsert({ id: 1, client_id, client_secret, webhook_verify_token }, { onConflict: "id" })
 
   if (error) return { error: error.message }
   return {}
