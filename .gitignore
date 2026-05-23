@@ -19,6 +19,9 @@ venv/
 *.db
 *.db-journal
 
+# Claude Code local config (machine-specific, never commit)
+.claude/settings.local.json
+
 # OS/editor artifacts
 .DS_Store
 Thumbs.db
