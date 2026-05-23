@@ -26,7 +26,11 @@ export async function GET() {
 
   const nonce = randomUUID()
   const payload = JSON.stringify({ user_id: user.id, nonce })
-  const sig = createHmac("sha256", process.env.INTERNAL_SECRET!).update(payload).digest("hex")
+  const stateSecret = process.env.STRAVA_STATE_SECRET ?? process.env.INTERNAL_SECRET
+  if (!stateSecret) {
+    return NextResponse.redirect(`${baseUrl}/settings/strava?error=missing_state_secret`)
+  }
+  const sig = createHmac("sha256", stateSecret).update(payload).digest("hex")
   const state = Buffer.from(JSON.stringify({ payload, sig })).toString("base64url")
 
   const stravaUrl = new URL("https://www.strava.com/oauth/authorize")
