@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react"
 import Link from "next/link"
 import { Activity, ChevronRight, Plug, Zap } from "lucide-react"
+import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -15,7 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 
-import { completeOnboarding } from "./actions"
+import { completeOnboarding, saveOnboardingDraft } from "./actions"
 
 const SPORTS = [
   { value: "running", label: "Course à pied" },
@@ -32,22 +33,45 @@ const STEPS = [
   { label: "Connexions", icon: Plug },
 ]
 
-export function OnboardingWizard() {
+type InitialProfile = {
+  first_name: string | null
+  last_name: string | null
+  primary_sport: string | null
+  hr_max: number | null
+} | null
+
+export function OnboardingWizard({ initialProfile }: { initialProfile: InitialProfile }) {
   const [step, setStep] = useState(0)
-  const [firstName, setFirstName] = useState("")
-  const [lastName, setLastName] = useState("")
-  const [sport, setSport] = useState("")
-  const [hrMax, setHrMax] = useState("")
+  const [firstName, setFirstName] = useState(initialProfile?.first_name ?? "")
+  const [lastName, setLastName] = useState(initialProfile?.last_name ?? "")
+  const [sport, setSport] = useState(initialProfile?.primary_sport ?? "")
+  const [hrMax, setHrMax] = useState(initialProfile?.hr_max?.toString() ?? "")
   const [isPending, startTransition] = useTransition()
+
+  function buildFormData() {
+    const formData = new FormData()
+    formData.set("first_name", firstName)
+    formData.set("last_name", lastName)
+    formData.set("primary_sport", sport)
+    if (hrMax) formData.set("hr_max", hrMax)
+    return formData
+  }
+
+  function handleNext() {
+    startTransition(async () => {
+      const result = await saveOnboardingDraft(buildFormData())
+      if (result.error) {
+        toast.error(result.error)
+        return
+      }
+      setStep((s) => s + 1)
+    })
+  }
 
   function handleFinish() {
     startTransition(async () => {
-      const formData = new FormData()
-      formData.set("first_name", firstName)
-      formData.set("last_name", lastName)
-      formData.set("primary_sport", sport)
-      if (hrMax) formData.set("hr_max", hrMax)
-      await completeOnboarding(formData)
+      const result = await completeOnboarding(buildFormData())
+      if (result?.error) toast.error(result.error)
     })
   }
 
@@ -211,8 +235,8 @@ export function OnboardingWizard() {
         )}
 
         {step < STEPS.length - 1 ? (
-          <Button onClick={() => setStep((s) => s + 1)}>
-            Suivant
+          <Button onClick={handleNext} disabled={isPending}>
+            {isPending ? "Enregistrement…" : "Suivant"}
           </Button>
         ) : (
           <Button onClick={handleFinish} disabled={isPending}>

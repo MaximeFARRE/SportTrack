@@ -6,23 +6,43 @@ import { z } from "zod"
 import { createClient } from "@/lib/supabase/server"
 
 const SPORTS = ["running", "cycling", "swimming", "triathlon", "trail", "other"] as const
+const GENDERS = ["male", "female", "other", "prefer_not_to_say"] as const
+
+const optionalString = z.preprocess((value) => {
+  if (typeof value !== "string") return value
+  const trimmed = value.trim()
+  return trimmed === "" ? null : trimmed
+}, z.string().optional().nullable())
+
+const optionalNumber = (schema: z.ZodNumber) =>
+  z.preprocess((value) => {
+    if (typeof value !== "string") return value
+    const trimmed = value.trim()
+    return trimmed === "" ? null : Number(trimmed)
+  }, z.union([schema, z.null()]).optional())
 
 const profileSchema = z.object({
-  first_name: z.string().min(1, "Prénom requis").max(50),
-  last_name: z.string().min(1, "Nom requis").max(50),
-  birth_date: z.string().optional().nullable(),
-  gender: z.enum(["male", "female", "other", "prefer_not_to_say"]).optional().nullable(),
-  height_cm: z.coerce.number().min(100).max(250).optional().nullable(),
-  weight_kg: z.coerce.number().min(30).max(200).optional().nullable(),
-  hr_max: z.coerce.number().int().min(100).max(230).optional().nullable(),
-  hr_rest: z.coerce.number().int().min(30).max(100).optional().nullable(),
-  vma_kmh: z.coerce.number().min(5).max(25).optional().nullable(),
-  ftp_watts: z.coerce.number().int().min(50).max(600).optional().nullable(),
-  css_pace_per_100m: z.string().max(10).optional().nullable(),
-  primary_sport: z.enum(SPORTS).optional().nullable(),
+  first_name: optionalString.pipe(z.string().max(50).optional().nullable()),
+  last_name: optionalString.pipe(z.string().max(50).optional().nullable()),
+  birth_date: optionalString,
+  gender: z.preprocess((value) => {
+    if (typeof value !== "string") return value
+    return value.trim() === "" ? null : value
+  }, z.enum(GENDERS).optional().nullable()),
+  height_cm: optionalNumber(z.number().min(100).max(250)),
+  weight_kg: optionalNumber(z.number().min(30).max(200)),
+  hr_max: optionalNumber(z.number().int().min(100).max(230)),
+  hr_rest: optionalNumber(z.number().int().min(30).max(100)),
+  vma_kmh: optionalNumber(z.number().min(5).max(25)),
+  ftp_watts: optionalNumber(z.number().int().min(50).max(600)),
+  css_pace_per_100m: optionalString.pipe(z.string().max(10).optional().nullable()),
+  primary_sport: z.preprocess((value) => {
+    if (typeof value !== "string") return value
+    return value.trim() === "" ? null : value
+  }, z.enum(SPORTS).optional().nullable()),
   practiced_sports: z.array(z.enum(SPORTS)).default([]),
-  training_years: z.coerce.number().int().min(0).max(80).optional().nullable(),
-  weekly_target_hours: z.coerce.number().min(0).max(50).optional().nullable(),
+  training_years: optionalNumber(z.number().int().min(0).max(80)),
+  weekly_target_hours: optionalNumber(z.number().min(0).max(50)),
 })
 
 export type ProfileState = { error?: string; success?: boolean } | undefined

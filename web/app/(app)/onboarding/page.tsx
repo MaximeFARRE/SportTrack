@@ -13,11 +13,9 @@ export default async function OnboardingPage() {
 
   const { data: profile } = await supabase
     .from("athlete_profiles")
-    .select("user_id")
+    .select("first_name, last_name, primary_sport, hr_max")
     .eq("user_id", user.id)
     .maybeSingle()
 
-  if (profile) redirect("/dashboard")
-
-  return <OnboardingWizard />
+  return <OnboardingWizard initialProfile={profile} />
 }
