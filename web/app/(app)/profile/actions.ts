@@ -72,20 +72,13 @@ export async function upsertProfileAction(
 
   if (error) return { error: error.message }
 
-  // Trigger zone regeneration on FastAPI when FC max is provided
   if (parsed.data.hr_max) {
-    const fastapiUrl = process.env.FASTAPI_URL ?? "http://localhost:8000"
-    const internalSecret = process.env.INTERNAL_SECRET ?? ""
-    await fetch(`${fastapiUrl}/internal/regenerate-zones`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-internal-secret": internalSecret,
-      },
-      body: JSON.stringify({ user_id: user.id, hr_max: parsed.data.hr_max }),
-    }).catch(() => {
-      // Non-blocking: zones will be stale but profile is saved
-    })
+    try {
+      const { regenerateHrZonesForUser } = await import("@/lib/server/hr-zones")
+      await regenerateHrZonesForUser(user.id, parsed.data.hr_max)
+    } catch (e) {
+      console.error("regenerate zones failed", e)
+    }
   }
 
   revalidatePath("/profile")
