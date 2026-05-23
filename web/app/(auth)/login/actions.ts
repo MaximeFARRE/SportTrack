@@ -20,12 +20,19 @@ export async function loginAction(_prev: LoginState, formData: FormData): Promis
   }
 
   const supabase = await createClient()
-  const { error } = await supabase.auth.signInWithPassword({
-    email: parsed.data.email,
-    password: parsed.data.password,
-  })
 
-  if (error) {
+  let authError: string | null = null
+  try {
+    const { error } = await supabase.auth.signInWithPassword({
+      email: parsed.data.email,
+      password: parsed.data.password,
+    })
+    if (error) authError = error.message
+  } catch {
+    return { error: "Impossible de se connecter. Vérifiez votre connexion." }
+  }
+
+  if (authError) {
     return { error: "Email ou mot de passe incorrect" }
   }
 

@@ -27,17 +27,21 @@ export async function signupAction(_prev: SignupState, formData: FormData): Prom
   const supabase = await createClient()
   const origin = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000"
 
-  const { error } = await supabase.auth.signUp({
-    email: parsed.data.email,
-    password: parsed.data.password,
-    options: {
-      data: { display_name: parsed.data.displayName },
-      emailRedirectTo: `${origin}/auth/callback`,
-    },
-  })
+  try {
+    const { error } = await supabase.auth.signUp({
+      email: parsed.data.email,
+      password: parsed.data.password,
+      options: {
+        data: { display_name: parsed.data.displayName },
+        emailRedirectTo: `${origin}/auth/callback`,
+      },
+    })
 
-  if (error) {
-    return { error: error.message }
+    if (error) {
+      return { error: error.message }
+    }
+  } catch {
+    return { error: "Impossible de créer le compte. Vérifiez votre connexion." }
   }
 
   return { success: true }
