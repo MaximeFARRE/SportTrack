@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { EmptyState } from "@/components/ui/empty-state"
+import { getAcwrContext } from "@/lib/server/injuries/acwr"
 
 import { InjuryActions } from "./injury-actions"
 import { InjuryFormToggle } from "./injury-form-toggle"
@@ -109,6 +110,7 @@ export default async function InjuriesPage() {
     .eq("user_id", user.id)
     .order("start_date", { ascending: false })
 
+  const acwr = await getAcwrContext(user.id)
   const active = (injuries ?? []).filter((i) => !i.end_date || i.end_date >= today)
   const historical = (injuries ?? []).filter((i) => i.end_date && i.end_date < today)
 
@@ -121,6 +123,26 @@ export default async function InjuriesPage() {
         </div>
         <InjuryFormToggle />
       </div>
+
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Contexte charge</CardTitle>
+        </CardHeader>
+        <CardContent className="grid grid-cols-3 gap-3 text-sm">
+          <div>
+            <p className="text-xs text-muted-foreground">ACWR</p>
+            <p className="font-semibold">{acwr.acwr.toFixed(2)}</p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Charge 7j</p>
+            <p className="font-semibold">{acwr.acute_load_7d}</p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Charge 28j</p>
+            <p className="font-semibold">{acwr.chronic_load_28d}</p>
+          </div>
+        </CardContent>
+      </Card>
 
       {active.length === 0 && historical.length === 0 ? (
         <EmptyState
