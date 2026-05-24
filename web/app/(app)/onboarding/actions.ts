@@ -26,15 +26,12 @@ async function saveOnboardingProfile(formData: FormData): Promise<OnboardingStat
   if (error) return { error: error.message }
 
   if (hrMax && hrMax >= 100 && hrMax <= 230) {
-    const fastapiUrl = process.env.FASTAPI_URL ?? "http://localhost:8000"
-    await fetch(`${fastapiUrl}/internal/regenerate-zones`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-internal-secret": process.env.INTERNAL_SECRET ?? "",
-      },
-      body: JSON.stringify({ user_id: user.id, hr_max: hrMax }),
-    }).catch(() => {})
+    try {
+      const { regenerateHrZonesForUser } = await import("@/lib/server/hr-zones")
+      await regenerateHrZonesForUser(user.id, hrMax)
+    } catch (e) {
+      console.error("regenerate zones failed", e)
+    }
   }
 
   return { success: true }

@@ -2,7 +2,7 @@
  * Terra webhook endpoint.
  *
  * Terra sends POST requests here for: auth, daily, sleep, activity, body events.
- * We verify the signature then forward to FastAPI for processing.
+ * We verify the signature then process auth, daily, and sleep events in Next.js.
  *
  * To register the webhook with Terra, set the webhook URL in the Terra dashboard:
  *   https://dashboard.tryterra.co → Webhooks → Add endpoint
@@ -10,6 +10,8 @@
  */
 
 import { NextRequest, NextResponse } from "next/server"
+
+import { processTerraWebhook } from "@/lib/server/terra/webhook"
 
 export async function POST(request: NextRequest) {
   const signature = request.headers.get("terra-signature") ?? ""
@@ -23,8 +25,9 @@ export async function POST(request: NextRequest) {
 
   const body = JSON.parse(rawBytes.toString("utf-8"))
 
-  // Respond immediately — Terra expects a fast 200
-  void forwardToFastApi(body).catch(console.error)
+  await processTerraWebhook(body).catch((error) => {
+    console.error("terra webhook processing failed", error)
+  })
 
   return NextResponse.json({ received: true })
 }
@@ -48,18 +51,4 @@ function verifySignature(rawBody: Buffer, header: string): boolean {
   const expected = createHmac("sha256", secret).update(message).digest("hex")
 
   return expected === receivedSig
-}
-
-async function forwardToFastApi(body: unknown) {
-  const fastapiUrl = process.env.FASTAPI_URL
-  if (!fastapiUrl) return
-
-  await fetch(`${fastapiUrl}/internal/terra/process-webhook`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-internal-secret": process.env.INTERNAL_SECRET!,
-    },
-    body: JSON.stringify(body),
-  })
 }

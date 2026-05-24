@@ -5,7 +5,9 @@ function verifyState(state: string): { user_id: string } {
   const decoded = JSON.parse(Buffer.from(state, "base64url").toString("utf-8"))
   const { payload, sig } = decoded as { payload: string; sig: string }
 
-  const expected = createHmac("sha256", process.env.INTERNAL_SECRET!).update(payload).digest("hex")
+  const stateSecret = process.env.STRAVA_STATE_SECRET
+  if (!stateSecret) throw new Error("state secret manquant")
+  const expected = createHmac("sha256", stateSecret).update(payload).digest("hex")
 
   let valid = false
   try {
@@ -38,22 +40,14 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${baseUrl}/connections?strava=error`)
   }
 
-  const fastapiUrl = process.env.FASTAPI_URL!
-  let res: Response
   try {
-    res = await fetch(`${fastapiUrl}/internal/strava/exchange`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-internal-secret": process.env.INTERNAL_SECRET!,
-      },
-      body: JSON.stringify({ code, user_id }),
-    })
-  } catch {
-    return NextResponse.redirect(`${baseUrl}/connections?strava=error`)
-  }
-
-  if (!res.ok) {
+    const { exchangeCodeForToken, upsertStravaConnection } = await import(
+      "@/lib/server/strava/tokens"
+    )
+    const token = await exchangeCodeForToken(code)
+    await upsertStravaConnection(user_id, token)
+  } catch (e) {
+    console.error("strava callback failed", e)
     return NextResponse.redirect(`${baseUrl}/connections?strava=error`)
   }
 

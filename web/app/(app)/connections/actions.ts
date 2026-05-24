@@ -2,34 +2,25 @@
 
 import { revalidatePath } from "next/cache"
 
+import { importStravaHistory, syncRecentStrava } from "@/lib/server/strava/sync"
 import { createClient } from "@/lib/supabase/server"
 
 export async function syncStrava(): Promise<{ synced?: number; error?: string }> {
   const supabase = await createClient()
   const {
-    data: { session },
-  } = await supabase.auth.getSession()
+    data: { user },
+  } = await supabase.auth.getUser()
 
-  if (!session) return { error: "Non authentifié" }
+  if (!user) return { error: "Non authentifié" }
 
-  const fastapiUrl = process.env.FASTAPI_URL!
-  let res: Response
   try {
-    res = await fetch(`${fastapiUrl}/strava/sync`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${session.access_token}` },
-    })
-  } catch {
-    return { error: "Impossible de joindre le serveur" }
+    const { imported } = await syncRecentStrava(user.id)
+    revalidatePath("/connections")
+    revalidatePath("/dashboard")
+    return { synced: imported }
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Synchronisation échouée" }
   }
-
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}))
-    return { error: (body as { detail?: string }).detail ?? "Synchronisation échouée" }
-  }
-
-  revalidatePath("/connections")
-  return (await res.json()) as { synced: number }
 }
 
 export async function syncStravaHistory(
@@ -37,28 +28,19 @@ export async function syncStravaHistory(
 ): Promise<{ synced?: number; error?: string }> {
   const supabase = await createClient()
   const {
-    data: { session },
-  } = await supabase.auth.getSession()
+    data: { user },
+  } = await supabase.auth.getUser()
 
-  if (!session) return { error: "Non authentifié" }
+  if (!user) return { error: "Non authentifié" }
 
-  const fastapiUrl = process.env.FASTAPI_URL!
-  let res: Response
   try {
-    res = await fetch(`${fastapiUrl}/strava/sync/history?days=${days}`, {
-      headers: { Authorization: `Bearer ${session.access_token}` },
-    })
-  } catch {
-    return { error: "Impossible de joindre le serveur" }
+    const { imported } = await importStravaHistory(user.id, days)
+    revalidatePath("/connections")
+    revalidatePath("/dashboard")
+    return { synced: imported }
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Import historique échoué" }
   }
-
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}))
-    return { error: (body as { detail?: string }).detail ?? "Import historique échoué" }
-  }
-
-  revalidatePath("/connections")
-  return (await res.json()) as { synced: number }
 }
 
 export async function disconnectTerra(): Promise<{ success?: boolean; error?: string }> {

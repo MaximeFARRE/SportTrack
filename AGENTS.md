@@ -1,81 +1,56 @@
 # AGENTS.md — Operating Manual
 
-SportTrack is a multi-user sports training tracker. It computes training metrics (CTL/ATL/TSB) via a FastAPI backend.
+SportTrack is a multi-user sports training tracker built on **Next.js 16 + Supabase**.
 
-**Current stack (pivot/v2):** Next.js 15 frontend + Supabase (Postgres + Auth + RLS) + FastAPI for heavy compute. The old Streamlit UI (`ui/`) is being replaced. For the full pivot plan, read only the relevant phase section in PIVOT_PLAN.md — never the full file.
-
-**Reference documents (read on demand, not by default):**
-- `PIVOT_PLAN.md` — implementation plan by phase (read only the section you need)
-- `AUDIT.md` — historical analysis, read only for strategic context
-- `DESIGN_NEXT.md` — design specs for upcoming features, read only when implementing that feature
+**Stack:**
+- Frontend & backend: Next.js 16 (App Router, Server Actions, Route Handlers)
+- Auth + DB + RLS: Supabase
+- Hosting: Vercel (Root Directory: `web`)
+- Crons: Vercel Cron (`web/vercel.json`)
 
 ---
 
 ## Commands
 
 ```bash
-# Backend (FastAPI)
-pip install -r requirements.txt
-python run.py                          # http://127.0.0.1:8000 (docs at /docs)
-pytest                                 # run all tests
-
-# Frontend (Next.js)
-cd web && npm install
-npm run dev                            # http://localhost:3000
-
-# Scripts
-python -m scripts.sync_recent --athlete-id <id> [--per-page 30]
-python -m scripts.recompute_metrics --athlete-id <id> [--start-date YYYY-MM-DD]
+cd web
+npm install
+npm run dev     # http://localhost:3000
+npm test        # Vitest
+npm run build   # production build
 ```
 
-No linter or formatter is configured. Do not add one without being asked.
+No linter or formatter is enforced. Do not add one without being asked.
 
 ---
 
 ## Architecture
 
-**FastAPI backend (active)** — four strict layers, never cross them:
+### File layout under `web/`
 
-| Layer | Location | Responsibility |
-|---|---|---|
-| Models | `app/models/` | SQLModel table definitions only |
-| Services | `app/services/` | All business logic and DB queries |
-| Routers | `app/routers/` | HTTP interface, input validation, error codes |
-
-**Next.js frontend (`web/`)** — replacing the old Streamlit UI. Talks to FastAPI for heavy compute; reads/writes data directly via Supabase client for CRUD (RLS enforced). Never import from `app.*`.
-
-**Old Streamlit UI (`ui/`)** — being phased out. Do not add features to it.
-
-### Services layout
-
-| File | Purpose |
+| Path | Purpose |
 |---|---|
-| `metrics_compute.py` | Pure functions — no `Session`, no DB calls |
-| `metrics_service.py` | DB-bound metric queries — imports from `metrics_compute` |
-| `_sport_helpers.py` | Shared sport-type utilities used across services |
-| `strava_service.py` | Strava OAuth and API calls |
-| `sync_service.py` | Orchestrates activity import |
-| `auth_service.py` | User creation, login, password hashing |
+| `app/(auth)/` | Login, signup, forgot/reset password pages + Server Actions |
+| `app/(app)/` | Authenticated app pages |
+| `app/api/` | Route Handlers (Strava callback, webhooks, cron endpoints) |
+| `app/auth/callback/` | Supabase OAuth callback |
+| `lib/supabase/` | Supabase clients (browser, server, service-role, middleware) |
+| `lib/compute/` | Pure math helpers (HR zones, etc.) — no I/O |
+| `lib/server/` | Server-only modules with DB or external API access |
+| `lib/constants/` | Static data |
+| `components/` | React components |
+| `proxy.ts` | Next.js 16 middleware/session refresh via Supabase |
+| `vercel.json` | Vercel Cron config |
 
-### Database access
+### Database access rules
 
-- In routers: use `get_session` (plain generator, compatible with `Depends`)
-- In scripts: use `get_db()` (context manager)
-- Never call `engine` directly from outside `app/db.py`
+- Server Components / Server Actions with user context: `createClient()` from `lib/supabase/server.ts` (RLS enforced)
+- Cron jobs / webhooks: `createServiceClient()` from `lib/supabase/service.ts` (bypasses RLS)
+- Browser components: `createClient()` from `lib/supabase/client.ts`
 
-### Data ownership rules
+### Data ownership
 
-- Every activity or metric is owned by an `athlete_id`
-- Every permission check is based on a `user_id`
-- Every cross-user comparison is scoped to a `group_id`
-
----
-
-## Models
-
-All models are implemented and active:
-
-`User` · `Athlete` · `Activity` · `Group` · `GroupMember` · `DailyMetric` · `WeeklyMetric` · `Goal`
+Every row in `activities`, `athlete_profiles`, `hr_zones`, `daily_metrics`, `risk_assessments`, `injuries`, `planned_sessions`, and `provider_connections` is owned by a `user_id` (UUID from `auth.users`). RLS policies enforce that users only see their own rows.
 
 ---
 
@@ -83,10 +58,9 @@ All models are implemented and active:
 
 - Make minimal, targeted changes. Do not refactor adjacent code.
 - Do not add abstraction layers unless explicitly requested.
-- Do not create new files unless the task clearly requires it.
-- Do not duplicate logic that already exists in a service.
-- Keep pure computation functions (no DB) in `metrics_compute.py`.
-- Keep shared sport-type helpers in `_sport_helpers.py`.
+- Pure compute belongs in `lib/compute/`.
+- Database-bound or external API logic belongs in `lib/server/`.
+- Server-only modules must import from `@/lib/supabase/server` or `@/lib/supabase/service`, never from `@/lib/supabase/client`.
 - Follow existing naming conventions exactly.
 - Do not add comments that restate what the code already says.
 
@@ -95,9 +69,11 @@ All models are implemented and active:
 ## Git Workflow
 
 - Never commit directly to `main`.
-- Use branches: `feat/`, `fix/`, `chore/`, `docs/`, `test/`
-- Commit format: `type: short description` (Conventional Commits)
-- One concern per branch. Do not mix unrelated changes.
+- Never create a branch without explicit user approval or request.
+- Use branches: `feat/`, `fix/`, `chore/`, `docs/`, `test/`.
+- Commit format: `type: short description` (Conventional Commits).
+- Make frequent granular commits, with at least one commit per migration-plan sub-phase.
+- One concern per commit. Do not mix unrelated changes.
 - Before committing: review the diff, check for unintended changes.
 
 ---
@@ -106,9 +82,9 @@ All models are implemented and active:
 
 Before marking a task complete:
 
-- [ ] `pytest` passes with no failures
-- [ ] No import errors on `python -m app.main` or the affected module
+- [ ] `npm test` passes in `web/`
+- [ ] `npm run build` passes in `web/`
+- [ ] No internal calls to the removed Python backend remain
 - [ ] No untracked files accidentally left behind
-- [ ] No `__pycache__` or `.db` files staged
 - [ ] Diff reviewed — no unrelated changes included
 - [ ] If behavior or setup changed: README or relevant doc updated

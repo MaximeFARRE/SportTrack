@@ -1,18 +1,20 @@
 # Plan d'exécution — Éliminer FastAPI, Vercel Cron, nettoyage repo
 
-**Cible :** stack 100 % Next.js + Supabase, déployé sur Vercel (Root Directory = `web`).
-**Branche de travail :** créer `feat/eliminate-fastapi` depuis `pivot/v2`. Chaque phase = 1 commit minimum, à pusher au fil de l'eau.
+**Cible :** stack 100 % Next.js + Supabase, déployé sur Vercel (Root Directory = `web`). Aucun nouveau backend séparé : toute logique remplaçant FastAPI doit rester dans des Route Handlers, Server Actions ou modules server-only Next.js.
+**Branche de travail :** utiliser la branche validée par le propriétaire du projet. Ne jamais créer de branche sans accord explicite. Chaque sous-phase = 1 commit minimum, à pusher au fil de l'eau.
 
 ---
 
 ## Règles transverses pour l'agent qui exécute
 
-1. **Une phase = un commit minimum** au format Conventional Commits.
-2. **Ne jamais commit sur `main`.** Toujours sur `feat/eliminate-fastapi`, PR vers `pivot/v2`.
+1. **Une sous-phase = un commit minimum** au format Conventional Commits. Exemple : A.1, A.2, B.0, B.1, etc. Si une sous-phase ne modifie aucun fichier, le noter dans le commit de la sous-phase suivante.
+2. **Ne jamais commit sur `main`.** Travailler uniquement sur une branche validée par le propriétaire du projet, PR vers `pivot/v2`.
 3. **Toutes les fonctions de remplacement** vont dans `web/lib/server/` (côté serveur uniquement) ou `web/lib/compute/` (pure math).
 4. **Service-role Supabase client** : utiliser `createServiceClient()` depuis `web/lib/supabase/service.ts` (existe déjà) pour les opérations qui doivent bypasser RLS (crons).
 5. **Vérification après chaque phase :** lancer `npm run build` dans `web/` doit réussir, et la liste de routes générée doit contenir les nouvelles routes API ajoutées.
 6. **Aucune dépendance Python ne doit subsister** à la fin de la Phase H.
+7. **Ne pas supprimer FastAPI avant validation production** des remplacements Strava, Terra, export IA et crons. La Phase F est un couperet final, pas une étape de développement.
+8. **Migrations Supabase manuelles** : toute requête SQL à exécuter dans Supabase doit être ajoutée ou actualisée dans `docs/supabase_manual_migrations.sql` au moment de la sous-phase concernée. Objectif : à la fin du plan, ce fichier doit pouvoir être copié-collé dans l'éditeur SQL Supabase.
 
 ---
 
@@ -21,13 +23,14 @@
 | FastAPI actuel | Remplacement TypeScript | Phase |
 |---|---|---|
 | `POST /internal/regenerate-zones` | `lib/compute/hr-zones.ts` + appel direct depuis `onboarding/actions.ts` et `profile/actions.ts` | A |
-| `POST /internal/strava/exchange` | `lib/server/strava/oauth.ts` + appel depuis `app/api/strava/callback/route.ts` | B |
-| `POST /strava/sync` | `lib/server/strava/sync.ts` + nouvelle route `app/api/strava/sync/route.ts` (POST) | B |
-| `GET /strava/sync/history?days=N` | même fichier `lib/server/strava/sync.ts` + route `app/api/strava/sync-history/route.ts` (POST) | B |
+| `POST /internal/strava/exchange` | `lib/server/strava/tokens.ts` + appel depuis `app/api/strava/callback/route.ts` | B |
+| `POST /strava/sync` | `lib/server/strava/sync.ts` + appel direct depuis `connections/actions.ts` | B |
+| `GET /strava/sync/history?days=N` | même fichier `lib/server/strava/sync.ts` + appel direct depuis `connections/actions.ts` | B |
 | `POST /internal/strava/webhook-event` | `lib/server/strava/webhook.ts` + traitement inline dans `app/api/strava/webhook/route.ts` | B |
 | `GET /terra/widget-session` | `lib/server/terra/widget.ts` + traitement inline dans `app/(app)/connections/terra/connect/route.ts` | C |
 | `POST /internal/terra/process-webhook` | `lib/server/terra/webhook.ts` + traitement inline dans `app/api/terra/webhook/route.ts` | C |
-| `compute_time_in_zones` (intensity_distribution) | `lib/server/strava/intensity.ts` — appelé en chaîne après chaque sync | B |
+| `compute_time_in_zones` (intensity_distribution) | `lib/server/strava/intensity.ts` — appelé après sync, sans promesse fire-and-forget | B |
+| Agrégation activités → `daily_metrics` | `lib/server/metrics/daily.ts` appelé après import/sync Strava et par cron léger | B/D |
 | `assess_and_persist` (overtraining) | `lib/server/risk/compute.ts` + cron route `app/api/cron/daily-risk/route.ts` | D |
 | `get_injury_suggestions` (injury suggestions) | `lib/server/injuries/suggest.ts` + cron route `app/api/cron/daily-injury/route.ts` | D |
 | `get_acwr_context` (utilisé par UI blessures) | `lib/server/injuries/acwr.ts` + appel direct depuis Server Action | D |
@@ -35,7 +38,8 @@
 | Tests Python (`tests/`) | Vitest dans `web/__tests__/server/` pour les fonctions portées | chaque phase |
 
 **Ne PAS porter** (non utilisés par le frontend Next.js actuel, code mort) :
-- `metrics_service.py`, `metrics_compute.py` — pas appelés depuis Next.js (le dashboard fait ses propres queries Supabase)
+- Les endpoints `metrics` FastAPI complets — pas appelés depuis Next.js
+- Les fonctions avancées de `metrics_service.py` / `metrics_compute.py` — ne porter que le calcul minimal de `training_load` et l'agrégation journalière nécessaires à `daily_metrics`, au dashboard, au risque et à l'export IA
 - `goal_service.py`, `gamification_service.py` — pas appelés depuis Next.js
 - `activity_service.py`, `calendar_service.py` — pas appelés depuis Next.js
 - Routers `goals`, `metrics`, `activities`, `me` — pas appelés
@@ -174,12 +178,21 @@ describe("classifyHr", () => {
 cd web && npm run test -- hr-zones && npm run build
 git add web/lib/compute/hr-zones.ts web/lib/server/hr-zones.ts web/app/\(app\)/onboarding/actions.ts web/app/\(app\)/profile/actions.ts web/__tests__/server/hr-zones.test.ts
 git commit -m "feat(zones): port HR zone compute from FastAPI to TypeScript"
-git push origin feat/eliminate-fastapi
+git push origin "$(git branch --show-current)"
 ```
 
 ---
 
 ## Phase B — Strava OAuth + sync + webhook (3-5h)
+
+### B.0 — Secret de state OAuth Strava
+
+Le `state` OAuth Strava doit rester signé côté serveur après suppression de FastAPI. Remplacer `process.env.INTERNAL_SECRET` par `process.env.STRAVA_STATE_SECRET ?? process.env.INTERNAL_SECRET` dans :
+
+- `web/app/(app)/connections/strava/connect/route.ts`
+- `web/app/api/strava/callback/route.ts`
+
+Ajouter `STRAVA_STATE_SECRET` dans `web/.env.example` et Vercel. Garder `INTERNAL_SECRET` le temps de la transition si la production l'utilise déjà, puis le supprimer seulement après validation du nouveau secret.
 
 ### B.1 — Module token Strava : `web/lib/server/strava/tokens.ts`
 
@@ -237,12 +250,13 @@ export async function refreshAccessToken(refreshToken: string): Promise<StravaTo
 
 export async function upsertStravaConnection(userId: string, payload: StravaTokenPayload): Promise<void> {
   const supabase = createServiceClient()
+  if (!payload.athlete?.id) throw new Error("Strava athlete id manquant")
   const scopes = payload.scope ? payload.scope.split(",").map((s) => s.trim()).filter(Boolean) : []
   const { error } = await supabase.from("provider_connections").upsert(
     {
       user_id: userId,
       provider: "strava",
-      provider_user_id: String(payload.athlete?.id ?? ""),
+      provider_user_id: String(payload.athlete.id),
       access_token: payload.access_token,
       refresh_token: payload.refresh_token,
       token_expires_at: payload.expires_at,
@@ -408,12 +422,18 @@ async function _doSync(userId: string, token: string, perPage: number, maxPages:
     .eq("user_id", userId)
     .eq("provider", "strava")
 
-  // Trigger intensity computation in background (best-effort, won't block)
+  // Vercel peut interrompre les promesses non attendues après la réponse.
+  // Garder ce travail borné, mais l'attendre.
   for (const actId of insertedIds.slice(0, 10)) {
-    computeIntensityForActivity(userId, actId).catch((e) =>
-      console.warn("intensity compute failed", actId, e),
-    )
+    try {
+      await computeIntensityForActivity(userId, actId)
+    } catch (e) {
+      console.warn("intensity compute failed", actId, e)
+    }
   }
+
+  const { recomputeDailyMetricsForUser } = await import("@/lib/server/metrics/daily")
+  await recomputeDailyMetricsForUser(userId, { days: 120 })
 
   return { imported, skipped }
 }
@@ -488,7 +508,7 @@ export async function computeIntensityForActivity(userId: string, activityId: st
 
 ### B.4 — Remplacer le callback OAuth
 
-Réécrire `web/app/api/strava/callback/route.ts` : remplacer le bloc `fastapiUrl` (lignes 41-54) par :
+Réécrire `web/app/api/strava/callback/route.ts` : remplacer le bloc `removedBackendUrl` (lignes 41-54) par :
 
 ```typescript
 try {
@@ -502,7 +522,7 @@ try {
 return NextResponse.redirect(`${baseUrl}/connections?strava=connected`)
 ```
 
-(Supprimer toute la partie `fetch(`${fastapiUrl}/...)`.)
+(Supprimer toute la partie `fetch(`${removedBackendUrl}/...)`.)
 
 ### B.5 — Réécrire les actions sync
 
@@ -550,45 +570,39 @@ export async function syncStravaHistory(days: number = 90): Promise<{ synced?: n
 Lire `web/app/api/strava/webhook/route.ts` en entier puis remplacer le `forwardToFastApi` par un traitement inline qui :
 - Vérifie le verify_token (GET handshake) — déjà en place
 - Sur POST, parse `aspect_type` / `object_type` / `object_id` / `owner_id`
-- Si `object_type === "activity"` et `aspect_type === "create" | "update"`, appelle `syncRecentStrava(user_id)` après avoir résolu `user_id` via la table `provider_connections` (lookup par `provider_user_id = owner_id`)
-- Renvoyer toujours 200 (Strava attend une réponse rapide)
+- Résout `user_id` via `provider_connections.provider_user_id = owner_id`
+- Pour `create` et `update`, fetch **l'activité exacte** `/api/v3/activities/{object_id}`, upsert `activities`, calcule les zones si possible, puis recalcule `daily_metrics`
+- Pour `delete`, supprimer la ligne `activities` correspondante ou la marquer inactive si un champ dédié est ajouté plus tard, puis recalcule `daily_metrics`
+- Renvoyer toujours 200 rapidement. Si le traitement est attendu dans la route, il doit rester petit. Ne pas utiliser `syncRecentStrava(perPage: 5)` comme substitut au webhook exact : cela rate les mises à jour d'activités anciennes.
 
-Squelette :
+Créer `syncSingleStravaActivity(userId, stravaActivityId)` dans `web/lib/server/strava/sync.ts`. Cette fonction réutilise `ensureValidStravaToken`, `mapActivity`, `computeIntensityForActivity` et `recomputeDailyMetricsForUser`.
 
-```typescript
-async function handleWebhookEvent(evt: { aspect_type: string; object_type: string; object_id: number; owner_id: number }) {
-  if (evt.object_type !== "activity") return
-  if (!["create", "update"].includes(evt.aspect_type)) return
+### B.7 — Agrégation daily metrics minimale
 
-  const supabase = createServiceClient()
-  const { data: conn } = await supabase
-    .from("provider_connections")
-    .select("user_id")
-    .eq("provider", "strava")
-    .eq("provider_user_id", String(evt.owner_id))
-    .eq("is_active", true)
-    .maybeSingle()
-  if (!conn?.user_id) return
+Créer `web/lib/server/metrics/daily.ts`. Objectif volontairement limité : remplacer uniquement ce que FastAPI apportait aux écrans Next actuels.
 
-  const { syncRecentStrava } = await import("@/lib/server/strava/sync")
-  await syncRecentStrava(conn.user_id, { perPage: 5, maxPages: 1 })
-}
-```
+- Query `activities` sur une fenêtre bornée (`days`, défaut 120).
+- Grouper par jour local UTC à partir de `start_date`.
+- Upsert `daily_metrics` avec `sessions_count`, `duration_sec`, `distance_m`, `elevation_gain_m`, `training_load`.
+- Garder les champs Terra existants (`hrv_rmssd`, `sleep_score`, etc.) : ne jamais les écraser avec `null`.
+- Calcul `training_load` minimal repris de l'intention existante : durée en minutes, coefficient sport, coefficient intensité si FC disponible, coefficient dénivelé pour run/trail. Pas besoin de porter les dashboards avancés de `metrics_service.py`.
 
-### B.7 — Tests
+Appeler cette fonction après `syncRecentStrava`, `importStravaHistory`, `syncSingleStravaActivity` et après suppression webhook.
+
+### B.8 — Tests
 
 Créer `web/__tests__/server/strava/sync.test.ts` avec au minimum :
 - mock de `fetch` qui renvoie 2 activités
 - mock de `createServiceClient` via `vi.mock("@/lib/supabase/service", ...)` retournant un client Supabase fake (`from(...).upsert(...)` / `from(...).update(...)`)
 - assertions : `imported === 2`, `last_sync_at` mis à jour
 
-### B.8 — Vérification + commit
+### B.9 — Vérification + commit
 
 ```bash
 cd web && npm run test -- strava && npm run build
-git add web/lib/server/strava/ web/app/api/strava/ web/app/\(app\)/connections/actions.ts web/__tests__/server/strava/
+git add web/lib/server/strava/ web/lib/server/metrics/ web/app/api/strava/ web/app/\(app\)/connections/actions.ts web/__tests__/server/strava/
 git commit -m "feat(strava): port OAuth, sync, webhook, intensity from FastAPI to TypeScript"
-git push origin feat/eliminate-fastapi
+git push origin "$(git branch --show-current)"
 ```
 
 ---
@@ -629,14 +643,17 @@ export async function generateTerraWidgetSession(opts: { reference_id: string; s
 
 ### C.2 — Réécrire `web/app/(app)/connections/terra/connect/route.ts`
 
-Remplacer le `fetch(`${fastapiUrl}/terra/widget-session...`)` par un appel direct à `generateTerraWidgetSession()` avec `reference_id = user.id`, `success_redirect = ${baseUrl}/connections?terra=connected`, `failure_redirect = ${baseUrl}/connections?terra=error`.
+Remplacer le `fetch(`${removedBackendUrl}/terra/widget-session...`)` par un appel direct à `generateTerraWidgetSession()` avec `reference_id = user.id`, `success_redirect = ${baseUrl}/connections?terra=connected`, `failure_redirect = ${baseUrl}/connections?terra=error`.
 
 ### C.3 — Webhook Terra : `web/lib/server/terra/webhook.ts`
 
-Le webhook Terra reçoit des événements `auth`, `daily`, `sleep`, `activity`, `body`. Pour le MVP, traiter uniquement :
-- `auth` → upsert `provider_connections` (user_id depuis `reference_id`, provider="terra", provider_user_id=`user.user_id`, scopes selon provider)
-- `daily` → upsert `daily_metrics` (resting_hr, hrv_rmssd, sleep_score si présents, body_battery_morning, training_load)
-- `activity` → upsert `activities` (mapping Terra → schema activities)
+Le webhook Terra reçoit des événements `auth`, `daily`, `sleep`, `activity`, `body`. Pour supprimer FastAPI sans complexité inutile, traiter réellement le périmètre déjà utile à l'app :
+- `auth` → upsert `provider_connections` (user_id depuis `reference_id`, provider="terra", provider_user_id=`user.user_id`)
+- `daily` → upsert partiel `daily_metrics` (resting_hr, hrv_rmssd, body_battery_morning, training_readiness, stress, VO2max si présents)
+- `sleep` → upsert partiel `daily_metrics` (sleep_score, sleep_duration/deep/rem/light/awake si présents)
+- `activity` → optionnel en v1. Si le mapping Terra n'est pas certain, ne pas l'annoncer comme porté ; Strava reste la source primaire d'activités.
+
+Ne pas laisser de TODO/no-op sur `daily` ou `sleep` : ce serait une régression directe par rapport au FastAPI actuel.
 
 ```typescript
 // web/lib/server/terra/webhook.ts
@@ -657,17 +674,18 @@ export async function processTerraWebhook(payload: TerraPayload): Promise<void> 
   const supabase = createServiceClient()
 
   if (payload.type === "auth") {
+    if (!providerUserId) return
     await supabase.from("provider_connections").upsert({
       user_id: userId,
       provider: "terra",
-      provider_user_id: providerUserId ?? "",
+      provider_user_id: providerUserId,
       is_active: true,
     }, { onConflict: "user_id,provider" })
     return
   }
 
-  // TODO daily / activity / sleep : à itérer une fois qu'on a des payloads
-  //   d'exemple. Pour l'instant on no-op (Strava reste la source primaire).
+  // Implémenter normalizeTerraDaily / normalizeTerraSleep en fonctions pures
+  // et upsert uniquement les champs non-null dans daily_metrics.
 }
 ```
 
@@ -679,13 +697,35 @@ Remplacer `forwardToFastApi(body)` par `processTerraWebhook(body)`.
 
 ```bash
 git add web/lib/server/terra/ web/app/api/terra/webhook/route.ts web/app/\(app\)/connections/terra/connect/route.ts
-git commit -m "feat(terra): port widget session and webhook handler from FastAPI"
-git push origin feat/eliminate-fastapi
+git commit -m "feat(terra): port widget session and daily webhook handling"
+git push origin "$(git branch --show-current)"
 ```
 
 ---
 
 ## Phase D — Crons quotidiens via Vercel Cron (2-3h)
+
+### D.0 — Sécuriser `strava_config` avant suppression FastAPI
+
+Ajouter cette requête dans `docs/supabase_manual_migrations.sql`, car `strava_config` contient `client_secret` :
+
+```sql
+alter table public.strava_config enable row level security;
+
+drop policy if exists "service_role_all_strava_config" on public.strava_config;
+create policy "service_role_all_strava_config" on public.strava_config
+  for all using (auth.role() = 'service_role')
+  with check (auth.role() = 'service_role');
+```
+
+Cette migration ne crée pas de nouvelle architecture ; elle ferme seulement une surface sensible.
+
+Commit dédié attendu après cette sous-phase :
+
+```bash
+git add MIGRATION_PLAN.md docs/supabase_manual_migrations.sql
+git commit -m "docs: add Supabase migration checklist for FastAPI removal"
+```
 
 ### D.1 — Algo de risque : `web/lib/server/risk/compute.ts`
 
@@ -788,7 +828,7 @@ export async function persistAssessment(a: RiskAssessment): Promise<void> {
 export async function getActiveUserIds(): Promise<string[]> {
   const supabase = createServiceClient()
   const since = new Date(Date.now() - 30 * 86_400_000).toISOString().slice(0, 10)
-  const { data } = await supabase.from("daily_metrics").select("user_id").gte("metric_date", since)
+  const { data } = await supabase.from("activities").select("user_id").gte("start_date", since)
   const set = new Set<string>()
   for (const r of data ?? []) set.add(r.user_id)
   return Array.from(set)
@@ -823,6 +863,8 @@ export async function GET(req: NextRequest) {
   const ids = await getActiveUserIds()
   for (const uid of ids) {
     try {
+      const { recomputeDailyMetricsForUser } = await import("@/lib/server/metrics/daily")
+      await recomputeDailyMetricsForUser(uid, { days: 120 })
       const result = await computeRisk(uid)
       await persistAssessment(result)
     } catch (e) {
@@ -849,7 +891,7 @@ Créer `web/vercel.json` (à l'intérieur du sous-dossier, sera lu car Root Dire
 }
 ```
 
-**Important :** Vercel Hobby permet **2 crons** maximum, schedule en UTC, fréquence ≥ 1 fois par jour. Vercel injecte automatiquement `Authorization: Bearer ${CRON_SECRET}` si la variable `CRON_SECRET` est définie dans les env vars du projet.
+**Important :** Vercel Hobby permet **2 crons** maximum, schedule en UTC, fréquence ≥ 1 fois par jour. Vercel injecte automatiquement `Authorization: Bearer ${CRON_SECRET}` si la variable `CRON_SECRET` est définie dans les env vars du projet. Les crons Vercel tournent sur les déploiements de production ; tester manuellement les routes en preview avec `curl` et le header Authorization.
 
 ### D.6 — Ajouter `CRON_SECRET` sur Vercel
 
@@ -864,14 +906,14 @@ openssl rand -hex 32
 
 ### D.7 — Brancher l'UI sur ACWR context
 
-Dans `web/app/(app)/injuries/page.tsx` (ou un nouveau composant), remplacer tout appel à `${FASTAPI_URL}/injuries/acwr-context` par un appel direct à `getAcwrContext(user.id, today)`.
+Dans `web/app/(app)/injuries/page.tsx` (ou un nouveau composant), remplacer tout appel à `${REMOVED_BACKEND_URL}/injuries/acwr-context` par un appel direct à `getAcwrContext(user.id, today)`.
 
 ### D.8 — Commit
 
 ```bash
-git add web/lib/server/risk/ web/lib/server/injuries/ web/app/api/cron/ web/vercel.json
+git add web/lib/server/risk/ web/lib/server/injuries/ web/app/api/cron/ web/vercel.json supabase/migrations/
 git commit -m "feat(cron): port risk and injury detection to TypeScript with Vercel Cron"
-git push origin feat/eliminate-fastapi
+git push origin "$(git branch --show-current)"
 ```
 
 ---
@@ -880,19 +922,19 @@ git push origin feat/eliminate-fastapi
 
 ### E.1 — `web/lib/server/export/ai-summary.ts`
 
-Port simplifié de `ai_export_service.py` : query `athlete_profiles` + `activities` (90j) + `daily_metrics` (90j) + `injuries` actives, construit un objet JSON structuré.
+Port ciblé de `ai_export_service.py`, sans endpoint FastAPI. Garder la compatibilité UI actuelle : `weeks` reste un paramètre et les formats `json` et `markdown` doivent continuer à fonctionner.
 
 ```typescript
 // web/lib/server/export/ai-summary.ts
 import { createServiceClient } from "@/lib/supabase/service"
 
-export async function buildAiSummary(userId: string): Promise<Record<string, unknown>> {
+export async function buildAiSummary(userId: string, weeks: number = 8): Promise<Record<string, unknown>> {
   const supabase = createServiceClient()
-  const ninetyDaysAgo = new Date(Date.now() - 90 * 86_400_000).toISOString()
+  const since = new Date(Date.now() - weeks * 7 * 86_400_000).toISOString()
   const [{ data: profile }, { data: activities }, { data: metrics }, { data: injuries }] = await Promise.all([
     supabase.from("athlete_profiles").select("*").eq("user_id", userId).maybeSingle(),
-    supabase.from("activities").select("name, sport_type, start_date, duration_sec, distance_m, average_heartrate, time_in_zones_json").eq("user_id", userId).gte("start_date", ninetyDaysAgo).order("start_date", { ascending: false }),
-    supabase.from("daily_metrics").select("*").eq("user_id", userId).gte("metric_date", ninetyDaysAgo.slice(0, 10)),
+    supabase.from("activities").select("name, sport_type, start_date, duration_sec, distance_m, average_heartrate, time_in_zones_json").eq("user_id", userId).gte("start_date", since).order("start_date", { ascending: false }),
+    supabase.from("daily_metrics").select("*").eq("user_id", userId).gte("metric_date", since.slice(0, 10)),
     supabase.from("injuries").select("*").eq("user_id", userId).is("end_date", null),
   ])
   return {
@@ -903,18 +945,28 @@ export async function buildAiSummary(userId: string): Promise<Record<string, unk
     generated_at: new Date().toISOString(),
   }
 }
+
+export function aiSummaryToMarkdown(data: Record<string, unknown>): string {
+  // Porter la structure utile de to_markdown sans dépendance externe.
+  // La sortie doit rester lisible et stable pour copier/coller dans un LLM.
+  return ["# Bilan d'entraînement SportTrack", "", "```json", JSON.stringify(data, null, 2), "```"].join("\n")
+}
 ```
 
 ### E.2 — Réécrire `web/app/(app)/profile/export-actions.ts`
 
-Remplacer le `fetch(${FASTAPI_URL}/export/ai-summary)` par un appel direct à `buildAiSummary(user.id)` qui retourne le JSON. Le composant `ExportCard` n'a besoin d'aucun changement si la signature de retour reste la même.
+Remplacer le `fetch(${REMOVED_BACKEND_URL}/export/ai-summary)` par un appel direct à `buildAiSummary(user.id, weeks)`.
+
+- `fetchExportJson(weeks)` retourne `JSON.stringify(await buildAiSummary(user.id, weeks), null, 2)`.
+- `fetchExportMarkdown(weeks)` retourne `aiSummaryToMarkdown(await buildAiSummary(user.id, weeks))`.
+- Le composant `ExportCard` ne doit pas changer.
 
 ### E.3 — Commit
 
 ```bash
 git add web/lib/server/export/ web/app/\(app\)/profile/export-actions.ts
 git commit -m "feat(export): port AI summary export from FastAPI to TypeScript"
-git push origin feat/eliminate-fastapi
+git push origin "$(git branch --show-current)"
 ```
 
 ---
@@ -938,7 +990,7 @@ Retirer les lignes liées à Python : `__pycache__/`, `*.pyc`, `*.pyo`, `*.db`, 
 ### F.3 — Vérifier qu'aucun import résiduel
 
 ```bash
-grep -rn "FASTAPI_URL\|fastapiUrl" web/ 2>/dev/null
+grep -rn "REMOVED_BACKEND_URL\|removedBackendUrl" web/ 2>/dev/null
 grep -rn "from app\." . 2>/dev/null
 grep -rn "import app\." . 2>/dev/null
 ```
@@ -947,9 +999,9 @@ Ces commandes doivent retourner **vide**. Sinon, corriger avant de continuer.
 ### F.4 — Retirer les env vars obsolètes sur Vercel
 
 Via le Dashboard Vercel → Settings → Environment Variables, supprimer :
-- `FASTAPI_URL`
+- `REMOVED_BACKEND_URL`
 - `DATABASE_URL` (plus utilisée par Next.js, seulement par FastAPI supprimé)
-- `INTERNAL_SECRET` (plus utilisé)
+- `INTERNAL_SECRET` seulement si le state Strava a été migré vers `STRAVA_STATE_SECRET` ou une autre stratégie. Sinon le garder.
 - `SUPABASE_JWT_SECRET` (plus utilisé)
 
 Garder :
@@ -959,6 +1011,7 @@ Garder :
 - `NEXT_PUBLIC_BASE_URL`
 - `WEB_BASE_URL`
 - `CRON_SECRET`
+- `STRAVA_STATE_SECRET` si cette variable remplace `INTERNAL_SECRET` pour signer le state OAuth Strava
 - `TERRA_DEV_ID`, `TERRA_API_KEY`, `TERRA_WEBHOOK_SECRET`
 - `ENCRYPTION_KEY` (si utilisée pour chiffrer tokens, sinon supprimer)
 
@@ -966,7 +1019,7 @@ Garder :
 
 ```bash
 git commit -m "chore: remove FastAPI backend — fully replaced by Next.js + Supabase"
-git push origin feat/eliminate-fastapi
+git push origin "$(git branch --show-current)"
 ```
 
 ---
@@ -1057,7 +1110,7 @@ No linter or formatter is enforced. Do not add one without being asked.
 
 - `npm run build` passes in `web/`
 - Vitest tests pass
-- No `fetch(${FASTAPI_URL}/...)` calls anywhere
+- No `fetch(${REMOVED_BACKEND_URL}/...)` calls anywhere
 - Diff reviewed for unrelated changes
 ```
 
@@ -1158,6 +1211,7 @@ WEB_BASE_URL=http://localhost:3000
 
 # Crons (Vercel injects in production)
 CRON_SECRET=
+STRAVA_STATE_SECRET=
 
 # Terra (optional)
 TERRA_DEV_ID=
@@ -1192,7 +1246,7 @@ git mv AUDIT.md docs/archive/AUDIT.md
 ```bash
 git add AGENTS.md CLAUDE.md README.md web/.env.example docs/
 git commit -m "docs: rewrite for Next.js + Supabase stack post-FastAPI removal"
-git push origin feat/eliminate-fastapi
+git push origin "$(git branch --show-current)"
 ```
 
 ---
@@ -1204,9 +1258,9 @@ git push origin feat/eliminate-fastapi
 - [ ] `cd web && npm run build` passe sans erreur
 - [ ] `cd web && npm test` passe
 - [ ] Aucun fichier Python ne reste : `find . -name "*.py" -not -path "./node_modules/*" -not -path "./.next/*"` → vide
-- [ ] Aucune référence à `FASTAPI_URL` : `grep -rn "FASTAPI_URL\|fastapiUrl" . --exclude-dir=node_modules --exclude-dir=.next --exclude-dir=.git` → vide
+- [ ] Aucune référence à `REMOVED_BACKEND_URL` : `grep -rn "REMOVED_BACKEND_URL\|removedBackendUrl" . --exclude-dir=node_modules --exclude-dir=.next --exclude-dir=.git` → vide
 - [ ] `web/vercel.json` présent avec les 2 crons
-- [ ] Variables `CRON_SECRET` et `SUPABASE_SERVICE_ROLE_KEY` configurées sur Vercel
+- [ ] Variables `CRON_SECRET`, `SUPABASE_SERVICE_ROLE_KEY` et le secret de state Strava (`INTERNAL_SECRET` ou `STRAVA_STATE_SECRET`) configurés sur Vercel
 
 ### H.2 — Tests manuels en preview Vercel
 
@@ -1217,18 +1271,18 @@ Ouvrir la preview URL de la PR, puis :
 3. **Connexion Strava** : `/connections` → "Connecter Strava" → autoriser → revenir à `/connections` avec `?strava=connected`
 4. **Sync Strava** : cliquer "Synchroniser" → vérifier que `activities` se remplit
 5. **Import historique** : cliquer "Importer 90j" → idem
-6. **Dashboard** : vérifier que les activités semaine s'affichent + CTL/ATL chart
+6. **Dashboard** : vérifier que les activités semaine s'affichent + chart de charge depuis `daily_metrics`
 7. **Cron risque** (test manuel) : `curl -H "Authorization: Bearer $CRON_SECRET" https://sport-track-ochre.vercel.app/api/cron/daily-risk` → `{ "ok": true, ... }`
 8. **Cron blessures** : idem avec `/api/cron/daily-injury`
 
 ### H.3 — Créer la PR
 
 ```bash
-gh pr create --base pivot/v2 --head feat/eliminate-fastapi \
+gh pr create --base pivot/v2 --head <branche-validée> \
   --title "feat: eliminate FastAPI — full Next.js + Supabase stack" \
   --body "$(cat <<'EOF'
 ## Summary
-- Port toutes les fonctions backend de FastAPI vers Next.js (Server Actions + Route Handlers)
+- Port les fonctions backend encore utilisées par Next.js vers Next.js (Server Actions + Route Handlers)
 - Crons quotidiens via Vercel Cron (`/api/cron/daily-risk`, `/api/cron/daily-injury`)
 - Suppression complète du code Python (`app/`, `api/`, `requirements.txt`, etc.)
 - Documentation mise à jour (AGENTS, CLAUDE, README, .env.example)
@@ -1296,8 +1350,8 @@ git revert -m 1 <merge-commit-sha>
 git push origin pivot/v2
 ```
 
-Tant que la branche `feat/eliminate-fastapi` n'est pas supprimée et que `vercel.json.bak` est en backup, on peut tout restaurer.
+Tant que la branche validée n'est pas supprimée et que `vercel.json.bak` est en backup, on peut tout restaurer.
 
 ---
 
-*Plan rédigé pour exécution par un agent de code autonome. Chaque phase est isolée et testable indépendamment.*
+*Plan rédigé pour exécution par un agent de code autonome. Chaque sous-phase est isolée et testable indépendamment.*

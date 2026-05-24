@@ -40,11 +40,12 @@ export async function GET(request: NextRequest) {
 
 /** Strava calls POST when an activity is created, updated, or deleted. */
 export async function POST(request: NextRequest) {
-  // Respond immediately so Strava doesn't time out waiting
   const body = await request.json().catch(() => null)
 
-  if (body && body.object_type === "activity" && body.aspect_type === "create") {
-    void processActivityEvent(body).catch(console.error)
+  if (body && body.object_type === "activity") {
+    await processActivityEvent(body).catch((error) => {
+      console.error("strava webhook processing failed", error)
+    })
   }
 
   return NextResponse.json({ received: true })
@@ -58,19 +59,27 @@ interface StravaEvent {
 }
 
 async function processActivityEvent(event: StravaEvent) {
-  const fastapiUrl = process.env.FASTAPI_URL!
+  if (!["create", "update", "delete"].includes(event.aspect_type)) return
 
-  // Resolve user_id from the Strava athlete id via FastAPI
-  // FastAPI looks up provider_connections where provider_user_id = owner_id
-  await fetch(`${fastapiUrl}/internal/strava/webhook-event`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-internal-secret": process.env.INTERNAL_SECRET!,
-    },
-    body: JSON.stringify({
-      activity_id: event.object_id,
-      strava_athlete_id: String(event.owner_id),
-    }),
-  })
+  const service = createServiceClient()
+  const { data: conn } = await service
+    .from("provider_connections")
+    .select("user_id")
+    .eq("provider", "strava")
+    .eq("provider_user_id", String(event.owner_id))
+    .eq("is_active", true)
+    .maybeSingle()
+
+  if (!conn?.user_id) return
+
+  const { deleteStravaActivity, syncSingleStravaActivity } = await import(
+    "@/lib/server/strava/sync"
+  )
+
+  if (event.aspect_type === "delete") {
+    await deleteStravaActivity(conn.user_id, event.object_id)
+    return
+  }
+
+  await syncSingleStravaActivity(conn.user_id, event.object_id)
 }

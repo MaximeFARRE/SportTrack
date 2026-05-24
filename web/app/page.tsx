@@ -105,7 +105,7 @@ export default function LandingPage() {
       <footer className="border-t">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-6 text-sm text-muted-foreground">
           <span>© {new Date().getFullYear()} SportTrack</span>
-          <span>Construit avec Next.js, Supabase et FastAPI</span>
+          <span>Construit avec Next.js et Supabase</span>
         </div>
       </footer>
     </div>

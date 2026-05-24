@@ -65,7 +65,7 @@
 - Webhook Strava : `app/api/strava/webhook/route.ts` → forward FastAPI
 - Backend : `strava_router`, `sync_router`, `strava_service.py`, `sync_service.py`
 
-**🟠 Bloquant : le backend FastAPI n'est plus déployé sur Vercel.** Toutes les actions Strava (`sync`, `import historique`, `callback`) appellent `process.env.FASTAPI_URL` qui pointait vers `/api/index` sur Vercel, désormais inaccessible.
+**🟠 Bloquant : le backend FastAPI n'est plus déployé sur Vercel.** Toutes les actions Strava (`sync`, `import historique`, `callback`) appellent `process.env.REMOVED_BACKEND_URL` qui pointait vers `/api/index` sur Vercel, désormais inaccessible.
 
 ---
 
@@ -209,7 +209,7 @@ Aucun fichier `chat/`, `coach/`, ni service Anthropic. Le `.env.example` mention
 Le `vercel.json` à la racine a été renommé `.bak` pour résoudre le conflit Root Directory. Conséquences :
 - `/api/index` (FastAPI) inaccessible
 - Cron jobs (`daily-risk`, `daily-injury`) ne tournent plus
-- Toute action qui appelle `process.env.FASTAPI_URL` retourne une erreur réseau
+- Toute action qui appelle `process.env.REMOVED_BACKEND_URL` retourne une erreur réseau
 
 **Pages/actions impactées :**
 - `/connections` → boutons "Synchroniser Strava" et "Importer 90j" cassés
@@ -222,7 +222,7 @@ Le `vercel.json` à la racine a été renommé `.bak` pour résoudre le conflit 
 
 **Options pour fixer :**
 - **A.** Créer un second projet Vercel pour FastAPI uniquement (Root Directory = `api`)
-- **B.** Déployer FastAPI sur Railway/Fly.io et pointer `FASTAPI_URL` vers cette URL
+- **B.** Déployer FastAPI sur Railway/Fly.io et pointer `REMOVED_BACKEND_URL` vers cette URL
 - **C.** Restaurer un `vercel.json` minimal qui ne builde que Python (en laissant le projet Vercel actuel gérer le Next.js)
 
 ### 🟠 2. Sync Strava initial
@@ -239,7 +239,7 @@ Sans ces crons, ces features ne se déclenchent jamais automatiquement.
 
 ### P0 — Débloquer le backend Python
 - [ ] Choisir la stratégie de redéploiement FastAPI (Vercel séparé / Railway / autre)
-- [ ] Pointer `FASTAPI_URL` (env Vercel + local) vers la nouvelle URL
+- [ ] Pointer `REMOVED_BACKEND_URL` (env Vercel + local) vers la nouvelle URL
 - [ ] Re-tester end-to-end : onboarding → zones FC, connexion Strava → sync, calcul risque
 
 ### P1 — Combler les phases manquantes
