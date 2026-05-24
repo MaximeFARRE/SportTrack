@@ -14,6 +14,7 @@ const PUBLIC_PATHS = [
   "/api/cron/daily-risk",
   "/api/strava/callback",
   "/api/strava/webhook",
+  "/api/garmin",
   "/api/terra/webhook",
 ]
 
