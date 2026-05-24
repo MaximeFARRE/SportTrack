@@ -541,7 +541,7 @@ export async function upsertProfile(formData: FormData) {
   if (error) return { error: error.message }
   
   // Trigger côté FastAPI pour régénérer les zones
-  await fetch(`${process.env.FASTAPI_URL}/internal/regenerate-zones`, {
+  await fetch(`${process.env.REMOVED_BACKEND_URL}/internal/regenerate-zones`, {
     method: "POST",
     headers: { Authorization: `Bearer ${user.id}` },
     body: JSON.stringify({ hr_max: parsed.data.hr_max })
@@ -750,7 +750,7 @@ export async function GET(request: NextRequest) {
   const { user_id } = await verifyState(state) // throw if invalid
   
   // Échange du code contre les tokens (via FastAPI pour garder le secret)
-  const tokens = await fetch(`${process.env.FASTAPI_URL}/internal/strava/exchange`, {
+  const tokens = await fetch(`${process.env.REMOVED_BACKEND_URL}/internal/strava/exchange`, {
     method: "POST",
     headers: { Authorization: `Bearer ${INTERNAL_SECRET}` },
     body: JSON.stringify({ code, user_id })
@@ -1671,7 +1671,7 @@ Utilise le skill `claude-api` côté code (prompt caching activé).
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 NEXT_PUBLIC_BASE_URL=https://sporttrack.app
-FASTAPI_URL=https://api.sporttrack.app
+REMOVED_BACKEND_URL=https://api.sporttrack.app
 INTERNAL_SECRET=                # partagé avec FastAPI
 STRAVA_CLIENT_ID=               # public ok (OAuth)
 ```

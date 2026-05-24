@@ -508,7 +508,7 @@ export async function computeIntensityForActivity(userId: string, activityId: st
 
 ### B.4 — Remplacer le callback OAuth
 
-Réécrire `web/app/api/strava/callback/route.ts` : remplacer le bloc `fastapiUrl` (lignes 41-54) par :
+Réécrire `web/app/api/strava/callback/route.ts` : remplacer le bloc `removedBackendUrl` (lignes 41-54) par :
 
 ```typescript
 try {
@@ -522,7 +522,7 @@ try {
 return NextResponse.redirect(`${baseUrl}/connections?strava=connected`)
 ```
 
-(Supprimer toute la partie `fetch(`${fastapiUrl}/...)`.)
+(Supprimer toute la partie `fetch(`${removedBackendUrl}/...)`.)
 
 ### B.5 — Réécrire les actions sync
 
@@ -643,7 +643,7 @@ export async function generateTerraWidgetSession(opts: { reference_id: string; s
 
 ### C.2 — Réécrire `web/app/(app)/connections/terra/connect/route.ts`
 
-Remplacer le `fetch(`${fastapiUrl}/terra/widget-session...`)` par un appel direct à `generateTerraWidgetSession()` avec `reference_id = user.id`, `success_redirect = ${baseUrl}/connections?terra=connected`, `failure_redirect = ${baseUrl}/connections?terra=error`.
+Remplacer le `fetch(`${removedBackendUrl}/terra/widget-session...`)` par un appel direct à `generateTerraWidgetSession()` avec `reference_id = user.id`, `success_redirect = ${baseUrl}/connections?terra=connected`, `failure_redirect = ${baseUrl}/connections?terra=error`.
 
 ### C.3 — Webhook Terra : `web/lib/server/terra/webhook.ts`
 
@@ -906,7 +906,7 @@ openssl rand -hex 32
 
 ### D.7 — Brancher l'UI sur ACWR context
 
-Dans `web/app/(app)/injuries/page.tsx` (ou un nouveau composant), remplacer tout appel à `${FASTAPI_URL}/injuries/acwr-context` par un appel direct à `getAcwrContext(user.id, today)`.
+Dans `web/app/(app)/injuries/page.tsx` (ou un nouveau composant), remplacer tout appel à `${REMOVED_BACKEND_URL}/injuries/acwr-context` par un appel direct à `getAcwrContext(user.id, today)`.
 
 ### D.8 — Commit
 
@@ -955,7 +955,7 @@ export function aiSummaryToMarkdown(data: Record<string, unknown>): string {
 
 ### E.2 — Réécrire `web/app/(app)/profile/export-actions.ts`
 
-Remplacer le `fetch(${FASTAPI_URL}/export/ai-summary)` par un appel direct à `buildAiSummary(user.id, weeks)`.
+Remplacer le `fetch(${REMOVED_BACKEND_URL}/export/ai-summary)` par un appel direct à `buildAiSummary(user.id, weeks)`.
 
 - `fetchExportJson(weeks)` retourne `JSON.stringify(await buildAiSummary(user.id, weeks), null, 2)`.
 - `fetchExportMarkdown(weeks)` retourne `aiSummaryToMarkdown(await buildAiSummary(user.id, weeks))`.
@@ -990,7 +990,7 @@ Retirer les lignes liées à Python : `__pycache__/`, `*.pyc`, `*.pyo`, `*.db`, 
 ### F.3 — Vérifier qu'aucun import résiduel
 
 ```bash
-grep -rn "FASTAPI_URL\|fastapiUrl" web/ 2>/dev/null
+grep -rn "REMOVED_BACKEND_URL\|removedBackendUrl" web/ 2>/dev/null
 grep -rn "from app\." . 2>/dev/null
 grep -rn "import app\." . 2>/dev/null
 ```
@@ -999,7 +999,7 @@ Ces commandes doivent retourner **vide**. Sinon, corriger avant de continuer.
 ### F.4 — Retirer les env vars obsolètes sur Vercel
 
 Via le Dashboard Vercel → Settings → Environment Variables, supprimer :
-- `FASTAPI_URL`
+- `REMOVED_BACKEND_URL`
 - `DATABASE_URL` (plus utilisée par Next.js, seulement par FastAPI supprimé)
 - `INTERNAL_SECRET` seulement si le state Strava a été migré vers `STRAVA_STATE_SECRET` ou une autre stratégie. Sinon le garder.
 - `SUPABASE_JWT_SECRET` (plus utilisé)
@@ -1110,7 +1110,7 @@ No linter or formatter is enforced. Do not add one without being asked.
 
 - `npm run build` passes in `web/`
 - Vitest tests pass
-- No `fetch(${FASTAPI_URL}/...)` calls anywhere
+- No `fetch(${REMOVED_BACKEND_URL}/...)` calls anywhere
 - Diff reviewed for unrelated changes
 ```
 
@@ -1258,7 +1258,7 @@ git push origin "$(git branch --show-current)"
 - [ ] `cd web && npm run build` passe sans erreur
 - [ ] `cd web && npm test` passe
 - [ ] Aucun fichier Python ne reste : `find . -name "*.py" -not -path "./node_modules/*" -not -path "./.next/*"` → vide
-- [ ] Aucune référence à `FASTAPI_URL` : `grep -rn "FASTAPI_URL\|fastapiUrl" . --exclude-dir=node_modules --exclude-dir=.next --exclude-dir=.git` → vide
+- [ ] Aucune référence à `REMOVED_BACKEND_URL` : `grep -rn "REMOVED_BACKEND_URL\|removedBackendUrl" . --exclude-dir=node_modules --exclude-dir=.next --exclude-dir=.git` → vide
 - [ ] `web/vercel.json` présent avec les 2 crons
 - [ ] Variables `CRON_SECRET`, `SUPABASE_SERVICE_ROLE_KEY` et le secret de state Strava (`INTERNAL_SECRET` ou `STRAVA_STATE_SECRET`) configurés sur Vercel
 
