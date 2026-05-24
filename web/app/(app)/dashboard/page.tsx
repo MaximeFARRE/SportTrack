@@ -8,6 +8,7 @@ import { Activity, Moon, TrendingUp, Zap } from "lucide-react"
 import { createClient } from "@/lib/supabase/server"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { CtlAtlChart } from "@/components/dashboard/ctl-atl-chart"
+import { WeeklyVolumeChart } from "@/components/dashboard/weekly-volume-chart"
 import { ZoneBars, aggregateZones } from "@/components/activity/zone-bars"
 import type { ZoneEntry } from "@/components/activity/zone-bars"
 
@@ -49,10 +50,11 @@ export default async function DashboardPage() {
   const now = new Date()
   const weekStart = startOfWeek(now, { weekStartsOn: 1 })
   const ninetyDaysAgo = subDays(now, 90)
+  const sixWeeksAgo = subDays(weekStart, 35)
 
   const today = now.toISOString().slice(0, 10)
 
-  const [profileResult, athleteResult, weekActivitiesResult, recentMetricsResult, riskResult] =
+  const [profileResult, athleteResult, weekActivitiesResult, recentMetricsResult, riskResult, sixWeeksActivitiesResult] =
     await Promise.all([
       supabase.from("profiles").select("display_name").eq("id", user.id).maybeSingle(),
       supabase.from("athlete_profiles").select("primary_sport, weekly_target_hours").eq("user_id", user.id).maybeSingle(),
@@ -74,6 +76,12 @@ export default async function DashboardPage() {
         .eq("user_id", user.id)
         .eq("assessment_date", today)
         .maybeSingle(),
+      supabase
+        .from("activities")
+        .select("id, sport_type, start_date, distance_m")
+        .eq("user_id", user.id)
+        .gte("start_date", sixWeeksAgo.toISOString())
+        .order("start_date", { ascending: false }),
     ])
 
   if (!athleteResult.data) redirect("/onboarding")
@@ -83,6 +91,7 @@ export default async function DashboardPage() {
   const weekActivities = weekActivitiesResult.data ?? []
   const recentMetrics = recentMetricsResult.data ?? []
   const latestMetric = recentMetrics.at(-1)
+  const sixWeeksActivities = sixWeeksActivitiesResult.data ?? []
 
   // Risk score: use today's risk_assessments row if available, else derive from training_readiness
   const riskData = riskResult.data
@@ -288,6 +297,9 @@ export default async function DashboardPage() {
           <CtlAtlChart data={chartData} />
         </CardContent>
       </Card>
+
+      {/* Graphique volume hebdomadaire (6 semaines) */}
+      <WeeklyVolumeChart activities={sixWeeksActivities} />
 
       {/* Activités récentes */}
       <div className="grid gap-4 lg:grid-cols-2">
