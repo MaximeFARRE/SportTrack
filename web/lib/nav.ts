@@ -28,5 +28,5 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/coach", label: "Coach IA", icon: Sparkles },
   { href: "/connections", label: "Connexions", icon: Plug },
   { href: "/profile", label: "Profil", icon: UserRound },
-  { href: "/settings/strava", label: "Paramètres", icon: Settings },
+  { href: "/settings", label: "Paramètres", icon: Settings },
 ]

@@ -8,12 +8,73 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
-import { disconnectStrava, disconnectTerra, syncStrava, syncStravaHistory } from "./actions"
+import {
+  disconnectStrava,
+  disconnectTerra,
+  syncAllStravaHistory,
+  syncStrava,
+  syncStravaHistory,
+} from "./actions"
 
 interface TerraCardProps {
   connected: boolean
   providerUserId?: string | null
   lastSyncAt?: string | null
+}
+
+export function GarminCard({ connected, providerUserId, lastSyncAt }: TerraCardProps) {
+  const lastSyncLabel = lastSyncAt
+    ? new Intl.DateTimeFormat("fr-FR", {
+        dateStyle: "short",
+        timeStyle: "short",
+      }).format(new Date(lastSyncAt))
+    : "Jamais"
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-sky-600 text-white font-bold text-sm">
+            G
+          </div>
+          <div>
+            <CardTitle className="text-lg">Garmin Connect</CardTitle>
+            <CardDescription>Montres Garmin — sommeil, récupération, FC repos</CardDescription>
+          </div>
+        </div>
+        <Badge variant={connected ? "default" : "secondary"}>
+          {connected ? "Connecté" : "Non connecté"}
+        </Badge>
+      </CardHeader>
+
+      <CardContent className="space-y-4">
+        {connected ? (
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <p className="text-muted-foreground">Compte Garmin</p>
+              <p className="font-medium truncate">{providerUserId ?? "connecté"}</p>
+            </div>
+            <div>
+              <p className="text-muted-foreground">Dernière donnée</p>
+              <p className="font-medium">{lastSyncLabel}</p>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Connectez votre compte Garmin Connect pour importer les données de votre montre.
+            </p>
+            <a
+              href="/settings"
+              className="inline-flex items-center justify-center rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground shadow hover:bg-primary/90"
+            >
+              Connecter Garmin
+            </a>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  )
 }
 
 export function TerraCard({ connected, providerUserId, lastSyncAt }: TerraCardProps) {
@@ -47,7 +108,7 @@ export function TerraCard({ connected, providerUserId, lastSyncAt }: TerraCardPr
             G
           </div>
           <div>
-            <CardTitle className="text-lg">Garmin / Polar / Fitbit</CardTitle>
+            <CardTitle className="text-lg">Polar / Fitbit / autres</CardTitle>
             <CardDescription>Via Terra — HRV, sommeil, récupération</CardDescription>
           </div>
         </div>
@@ -93,12 +154,12 @@ export function TerraCard({ connected, providerUserId, lastSyncAt }: TerraCardPr
               votre score de sommeil et vos données de récupération.
             </p>
             <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-              {["Garmin", "Polar", "Fitbit", "Apple Watch"].map((p) => (
+              {["Polar", "Fitbit", "Apple Watch", "Oura"].map((p) => (
                 <span key={p} className="rounded-full border px-2 py-0.5">{p}</span>
               ))}
             </div>
             <a
-              href="/connections/terra/connect"
+              href="/settings"
               className="inline-flex items-center justify-center rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground shadow hover:bg-primary/90"
             >
               Connecter mon appareil
@@ -126,6 +187,7 @@ export function StravaCard({
   const router = useRouter()
   const [syncing, setSyncing] = useState(false)
   const [importing, setImporting] = useState(false)
+  const [importingAll, setImportingAll] = useState(false)
   const [disconnecting, setDisconnecting] = useState(false)
 
   const lastSyncLabel = lastSyncAt
@@ -155,6 +217,18 @@ export function StravaCard({
       toast.error(result.error)
     } else {
       toast.success(`Import terminé — ${result.synced ?? 0} activité(s)`)
+      router.refresh()
+    }
+  }
+
+  async function handleImportAllHistory() {
+    setImportingAll(true)
+    const result = await syncAllStravaHistory()
+    setImportingAll(false)
+    if (result.error) {
+      toast.error(result.error)
+    } else {
+      toast.success(`Import complet terminé — ${result.synced ?? 0} activité(s)`)
       router.refresh()
     }
   }
@@ -216,22 +290,34 @@ export function StravaCard({
             </div>
 
             <div className="flex flex-wrap gap-2 pt-2">
-              <Button size="sm" onClick={handleSync} disabled={syncing || importing || disconnecting}>
+              <Button
+                size="sm"
+                onClick={handleSync}
+                disabled={syncing || importing || importingAll || disconnecting}
+              >
                 {syncing ? "Actualisation…" : "Actualiser les données Strava"}
               </Button>
               <Button
                 size="sm"
                 variant="outline"
                 onClick={handleImportHistory}
-                disabled={syncing || importing || disconnecting}
+                disabled={syncing || importing || importingAll || disconnecting}
               >
                 {importing ? "Import en cours…" : "Récupérer 90 jours d'historique"}
               </Button>
               <Button
                 size="sm"
+                variant="outline"
+                onClick={handleImportAllHistory}
+                disabled={syncing || importing || importingAll || disconnecting}
+              >
+                {importingAll ? "Import complet…" : "Récupérer tout l'historique"}
+              </Button>
+              <Button
+                size="sm"
                 variant="destructive"
                 onClick={handleDisconnect}
-                disabled={syncing || importing || disconnecting}
+                disabled={syncing || importing || importingAll || disconnecting}
               >
                 {disconnecting ? "Déconnexion…" : "Déconnecter"}
               </Button>
@@ -256,7 +342,7 @@ export function StravaCard({
               Connectez votre compte Strava pour importer automatiquement vos activités.
             </p>
             <a
-              href="/settings/strava"
+              href="/settings"
               className="inline-flex items-center justify-center rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground shadow hover:bg-primary/90"
             >
               Connecter Strava

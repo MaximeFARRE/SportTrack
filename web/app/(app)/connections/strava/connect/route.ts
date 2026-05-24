@@ -29,14 +29,14 @@ export async function GET(request: NextRequest) {
   const clientId = cfg?.client_id || ""
 
   if (!clientId) {
-    return NextResponse.redirect(`${baseUrl}/settings/strava?error=missing_config`)
+    return NextResponse.redirect(`${baseUrl}/settings?error=missing_config`)
   }
 
   const nonce = randomUUID()
   const payload = JSON.stringify({ user_id: user.id, nonce })
   const stateSecret = getStateSecret()
   if (!stateSecret) {
-    return NextResponse.redirect(`${baseUrl}/settings/strava?error=missing_state_secret`)
+    return NextResponse.redirect(`${baseUrl}/settings?error=missing_state_secret`)
   }
   const sig = createHmac("sha256", stateSecret).update(payload).digest("hex")
   const state = Buffer.from(JSON.stringify({ payload, sig })).toString("base64url")

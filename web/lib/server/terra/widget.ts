@@ -1,3 +1,5 @@
+import { getTerraCredentials } from "./config"
+
 const WIDGET_URL = "https://api.tryterra.co/v2/auth/generateWidgetSession"
 
 export async function generateTerraWidgetSession(opts: {
@@ -5,8 +7,7 @@ export async function generateTerraWidgetSession(opts: {
   success_redirect: string
   failure_redirect: string
 }): Promise<{ url: string; session_id?: string }> {
-  const devId = process.env.TERRA_DEV_ID
-  const apiKey = process.env.TERRA_API_KEY
+  const { devId, apiKey } = await getTerraCredentials()
 
   if (!devId || !apiKey) {
     throw new Error("Terra credentials manquantes")

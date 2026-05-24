@@ -13,6 +13,10 @@ import { NextResponse } from "next/server"
 import { generateTerraWidgetSession } from "@/lib/server/terra/widget"
 import { createClient } from "@/lib/supabase/server"
 
+function getBaseUrl() {
+  return (process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000").replace(/\/$/, "")
+}
+
 export async function GET() {
   const supabase = await createClient()
   const {
@@ -20,10 +24,10 @@ export async function GET() {
   } = await supabase.auth.getUser()
 
   if (!user) {
-    return NextResponse.redirect(new URL("/login", process.env.NEXT_PUBLIC_BASE_URL!))
+    return NextResponse.redirect(new URL("/login", getBaseUrl()))
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL!
+  const baseUrl = getBaseUrl()
   const successRedirect = `${baseUrl}/connections?terra=connected`
   const failureRedirect = `${baseUrl}/connections?terra=error`
 
@@ -38,7 +42,7 @@ export async function GET() {
   } catch (err) {
     console.error("Failed to generate Terra widget session:", err)
     return NextResponse.redirect(
-      new URL("/connections?error=terra", baseUrl),
+      new URL("/settings?error=terra_config", baseUrl),
     )
   }
 

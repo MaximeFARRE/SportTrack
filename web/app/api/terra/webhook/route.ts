@@ -10,7 +10,9 @@
  */
 
 import { NextRequest, NextResponse } from "next/server"
+import { createHmac, timingSafeEqual } from "crypto"
 
+import { getTerraCredentials } from "@/lib/server/terra/config"
 import { processTerraWebhook } from "@/lib/server/terra/webhook"
 
 export async function POST(request: NextRequest) {
@@ -19,7 +21,8 @@ export async function POST(request: NextRequest) {
   const rawBytes = Buffer.from(rawBody)
 
   // Verify Terra signature before processing
-  if (signature && !verifySignature(rawBytes, signature)) {
+  const { webhookSecret } = await getTerraCredentials()
+  if (webhookSecret && (!signature || !verifySignature(rawBytes, signature, webhookSecret))) {
     return new NextResponse("Unauthorized", { status: 401 })
   }
 
@@ -32,10 +35,7 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({ received: true })
 }
 
-function verifySignature(rawBody: Buffer, header: string): boolean {
-  const secret = process.env.TERRA_WEBHOOK_SECRET
-  if (!secret) return true // skip verification if not configured
-
+function verifySignature(rawBody: Buffer, header: string, secret: string): boolean {
   const parts: Record<string, string> = {}
   for (const part of header.split(",")) {
     const [k, v] = part.split("=", 2)
@@ -46,9 +46,12 @@ function verifySignature(rawBody: Buffer, header: string): boolean {
   const receivedSig = parts["v1"] ?? ""
   if (!timestamp || !receivedSig) return false
 
-  const { createHmac } = require("crypto") as typeof import("crypto")
   const message = Buffer.concat([Buffer.from(`${timestamp}.`), rawBody])
   const expected = createHmac("sha256", secret).update(message).digest("hex")
 
-  return expected === receivedSig
+  try {
+    return timingSafeEqual(Buffer.from(receivedSig, "hex"), Buffer.from(expected, "hex"))
+  } catch {
+    return false
+  }
 }
