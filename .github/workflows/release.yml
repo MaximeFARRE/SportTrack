@@ -1,14 +1,17 @@
-name: CI
+name: Release
 
 on:
   push:
-    branches: [pivot/v2, main]
-  pull_request:
-    branches: [pivot/v2, main]
+    branches: [main]
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
 
 jobs:
-  web:
-    name: Web (test · tsc · build)
+  release:
+    name: Semantic Release
     runs-on: ubuntu-latest
 
     defaults:
@@ -17,6 +20,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Node.js 24
         uses: actions/setup-node@v4
@@ -31,11 +36,13 @@ jobs:
       - name: Tests
         run: npm test
 
-      - name: Type check (tsc)
-        run: npx tsc --noEmit
-
       - name: Build
         env:
           NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
           NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder
         run: npm run build
+
+      - name: Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run release
