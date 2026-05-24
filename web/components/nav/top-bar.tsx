@@ -73,13 +73,11 @@ export function TopBar({ email, displayName }: { email: string; displayName: str
         <h1 className="text-base font-semibold">{currentItem?.label ?? "SportTrack"}</h1>
       </div>
 
-      <Button variant="ghost" className="h-9 gap-2 px-2" asChild>
-        <Link href="/profile">
-          <Avatar className="h-7 w-7">
-            <AvatarFallback className="text-xs">{initials}</AvatarFallback>
-          </Avatar>
-          <span className="hidden text-sm sm:inline">{displayName ?? email}</span>
-        </Link>
+      <Button variant="ghost" className="h-9 gap-2 px-2" render={<Link href="/profile" />}>
+        <Avatar className="h-7 w-7">
+          <AvatarFallback className="text-xs">{initials}</AvatarFallback>
+        </Avatar>
+        <span className="hidden text-sm sm:inline">{displayName ?? email}</span>
       </Button>
     </header>
   )
