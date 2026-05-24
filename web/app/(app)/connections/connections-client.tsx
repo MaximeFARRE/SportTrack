@@ -228,6 +228,13 @@ export function StravaCard({
                 {disconnecting ? "Déconnexion…" : "Déconnecter"}
               </Button>
             </div>
+
+            {activitiesCount === 0 ? (
+              <p className="text-xs text-muted-foreground">
+                Aucune activité importée pour l'instant. Lancez "Importer 90 jours" pour récupérer
+                l'historique récent.
+              </p>
+            ) : null}
           </>
         ) : (
           <div className="space-y-3">
