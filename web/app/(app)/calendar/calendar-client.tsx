@@ -41,6 +41,7 @@ export type PlannedSessionSummary = {
   planned_duration_min: number | null
   status: string
   description: string | null
+  actual_activity_id?: string | null
 }
 
 export type DayData = {
@@ -164,6 +165,7 @@ export function CalendarClient({
   allSports,
   missedDays = [],
   blocks = [],
+  raceGoals = [],
 }: {
   year: number
   month: number
@@ -171,6 +173,7 @@ export function CalendarClient({
   allSports: string[]
   missedDays?: string[]
   blocks?: TrainingBlock[]
+  raceGoals?: any[]
 }) {
   const router = useRouter()
   const [selectedDay, setSelectedDay] = useState<string | null>(null)
@@ -316,6 +319,9 @@ export function CalendarClient({
             const isMissed = missedSet.has(key)
             const dayNum = parseInt(key.split("-")[2], 10)
             const sports = [...new Set(data?.activities.map((a) => a.sport_type) ?? [])]
+            const dayRace = raceGoals.find(
+              (g: any) => g.target_date === key
+            )
             const dayBlock = blocks.find(
               (b) => b.start_date <= key && b.end_date >= key
             )
@@ -342,15 +348,32 @@ export function CalendarClient({
                   />
                 )}
 
-                {/* Day number */}
-                <span
-                  className={cn(
-                    "inline-flex h-5 w-5 items-center justify-center rounded-full text-xs",
-                    isToday && "bg-primary text-primary-foreground font-bold",
+                {/* Day number & Race indicator */}
+                <div className="flex items-center justify-between">
+                  <span
+                    className={cn(
+                      "inline-flex h-5 w-5 items-center justify-center rounded-full text-xs",
+                      isToday && "bg-primary text-primary-foreground font-bold",
+                    )}
+                  >
+                    {dayNum}
+                  </span>
+                  {dayRace && (
+                    <span
+                      className="text-xs shrink-0 mr-0.5"
+                      title={`🏁 Course : ${dayRace.name}`}
+                    >
+                      🏁
+                    </span>
                   )}
-                >
-                  {dayNum}
-                </span>
+                </div>
+
+                {/* Race text */}
+                {dayRace && (
+                  <div className="mt-0.5 text-[9px] leading-tight font-semibold text-rose-600 dark:text-rose-400 truncate w-full" title={dayRace.name}>
+                    {dayRace.name}
+                  </div>
+                )}
 
                 {/* Missed planned session badge */}
                 {isMissed && (
@@ -413,6 +436,22 @@ export function CalendarClient({
                 return (
                   <div className="mx-4 mb-4 rounded-md bg-indigo-50 px-3 py-1.5 text-xs text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 font-medium border border-indigo-200 dark:border-indigo-900/50">
                     🧱 Bloc d&apos;entraînement : {dayBlock.name}
+                  </div>
+                )
+              })()}
+
+              {(() => {
+                const dayRace = raceGoals.find(
+                  (g: any) => g.target_date === selectedDay
+                )
+                if (!dayRace) return null
+                return (
+                  <div className="mx-4 mb-4 rounded-md bg-rose-50 px-3 py-2 text-xs text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 font-semibold border border-rose-200 dark:border-rose-900/50 flex items-center gap-2">
+                    <span className="text-base">🏁</span>
+                    <div>
+                      <p className="font-bold">Événement : {dayRace.name}</p>
+                      <p className="text-[10px] text-rose-600/80 dark:text-rose-400/80 font-normal">C&apos;est le jour J ! Bon courage !</p>
+                    </div>
                   </div>
                 )
               })()}
