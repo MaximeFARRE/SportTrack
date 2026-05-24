@@ -4,8 +4,8 @@ import { useState, useMemo } from "react"
 import { startOfWeek, subWeeks, addDays, format, parseISO } from "date-fns"
 import { fr } from "date-fns/locale"
 import {
-  BarChart,
-  Bar,
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
   Tooltip,
@@ -70,37 +70,49 @@ function CustomTooltip({
   active,
   payload,
   label,
+  selectedSports,
 }: {
   active?: boolean
   payload?: any[]
   label?: string
+  selectedSports: string[]
 }) {
   if (!active || !payload?.length) return null
 
-  const total = payload.reduce((sum, entry) => sum + (entry.value ?? 0), 0)
+  const dataPoint = payload[0].payload
+  if (!dataPoint) return null
+
+  const sportBreakdown = selectedSports
+    .map((sport) => ({
+      sport,
+      value: dataPoint[sport] ?? 0,
+      color: getSportColor(sport),
+    }))
+    .filter((s) => s.value > 0)
+
+  const total = sportBreakdown.reduce((sum, item) => sum + item.value, 0)
 
   return (
     <div className="rounded-lg border bg-card p-3 shadow-sm text-sm space-y-1.5 border-border">
       <p className="font-semibold text-foreground">{label}</p>
       <div className="space-y-1">
-        {payload.map((entry) => {
-          const sportKey = entry.name as string
-          const labelText = SPORT_LABELS[sportKey] ?? sportKey
-          const emoji = SPORT_EMOJIS[sportKey] ?? "🏅"
+        {sportBreakdown.map(({ sport, value, color }) => {
+          const labelText = SPORT_LABELS[sport] ?? sport
+          const emoji = SPORT_EMOJIS[sport] ?? "🏅"
           return (
-            <div key={sportKey} className="flex items-center justify-between gap-6 text-xs">
-              <span className="flex items-center gap-1.5" style={{ color: entry.color }}>
+            <div key={sport} className="flex items-center justify-between gap-6 text-xs">
+              <span className="flex items-center gap-1.5" style={{ color }}>
                 <span>{emoji}</span>
                 <span>{labelText}</span>
               </span>
               <span className="font-medium text-foreground">
-                {entry.value.toFixed(1)} km
+                {value.toFixed(1)} km
               </span>
             </div>
           )
         })}
       </div>
-      {payload.length > 1 && (
+      {sportBreakdown.length > 1 && (
         <div className="border-t border-border pt-1.5 flex items-center justify-between gap-6 text-xs font-bold">
           <span>Total</span>
           <span className="text-foreground">{total.toFixed(1)} km</span>
@@ -183,16 +195,21 @@ export function WeeklyVolumeChart({ activities }: { activities: RawActivity[] })
         }
       })
 
-      // Round the final values to 1 decimal place
+      // Round the final values to 1 decimal place and calculate totalSelected
+      let totalSelected = 0
       uniqueSports.forEach((sport) => {
         if (dataPoint[sport] > 0) {
           dataPoint[sport] = Math.round(dataPoint[sport] * 10) / 10
+          if (selectedSports.includes(sport)) {
+            totalSelected += dataPoint[sport]
+          }
         }
       })
+      dataPoint.totalSelected = Math.round(totalSelected * 10) / 10
 
       return dataPoint
     })
-  }, [activities, uniqueSports])
+  }, [activities, uniqueSports, selectedSports])
 
   if (uniqueSports.length === 0) {
     return (
@@ -252,7 +269,13 @@ export function WeeklyVolumeChart({ activities }: { activities: RawActivity[] })
           </div>
         ) : (
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={chartData} margin={{ top: 10, right: 5, bottom: 5, left: -10 }}>
+            <AreaChart data={chartData} margin={{ top: 10, right: 5, bottom: 5, left: -10 }}>
+              <defs>
+                <linearGradient id="colorVolume" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/>
+                  <stop offset="95%" stopColor="#6366f1" stopOpacity={0.0}/>
+                </linearGradient>
+              </defs>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" opacity={0.3} />
               <XAxis
                 dataKey="weekLabel"
@@ -267,18 +290,18 @@ export function WeeklyVolumeChart({ activities }: { activities: RawActivity[] })
                 width={38}
                 unit=" km"
               />
-              <Tooltip content={<CustomTooltip />} cursor={{ fill: "var(--muted)", opacity: 0.15 }} />
-              {selectedSports.map((sport) => (
-                <Bar
-                  key={sport}
-                  dataKey={sport}
-                  name={sport}
-                  stackId="sports"
-                  fill={getSportColor(sport)}
-                  radius={[0, 0, 0, 0]}
-                />
-              ))}
-            </BarChart>
+              <Tooltip content={<CustomTooltip selectedSports={selectedSports} />} />
+              <Area
+                type="monotone"
+                dataKey="totalSelected"
+                stroke="#6366f1"
+                fillOpacity={1}
+                fill="url(#colorVolume)"
+                strokeWidth={2}
+                activeDot={{ r: 6, strokeWidth: 0 }}
+                dot={{ r: 4, stroke: "#6366f1", strokeWidth: 2, fill: "var(--background)" }}
+              />
+            </AreaChart>
           </ResponsiveContainer>
         )}
       </CardContent>
