@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ZoneBars, aggregateZones } from "@/components/activity/zone-bars"
 import type { ZoneEntry } from "@/components/activity/zone-bars"
 import { WeeklyVolume } from "@/components/progression/weekly-volume"
+import { UserPRs } from "@/components/progression/user-prs"
 
 export const metadata: Metadata = { title: "Progression · SportTrack" }
 
@@ -28,12 +29,22 @@ export default async function ProgressionPage() {
   const now = new Date()
   const twelveWeeksAgo = subWeeks(startOfWeek(now, { weekStartsOn: 1 }), 11)
 
-  const { data: activities } = await supabase
-    .from("activities")
-    .select("sport_type, start_date, duration_sec, distance_m, time_in_zones_json")
-    .eq("user_id", user.id)
-    .gte("start_date", twelveWeeksAgo.toISOString())
-    .order("start_date")
+  const [activitiesRes, prActivitiesRes] = await Promise.all([
+    supabase
+      .from("activities")
+      .select("sport_type, start_date, duration_sec, distance_m, time_in_zones_json")
+      .eq("user_id", user.id)
+      .gte("start_date", twelveWeeksAgo.toISOString())
+      .order("start_date"),
+    supabase
+      .from("activities")
+      .select("id, name, sport_type, start_date, duration_sec, distance_m, elevation_gain_m")
+      .eq("user_id", user.id)
+      .in("sport_type", ["Run", "Ride", "Swim"])
+  ])
+
+  const activities = activitiesRes.data
+  const prActivities = prActivitiesRes.data
 
   // Build weekly buckets
   const weeks: Array<{
@@ -175,6 +186,9 @@ export default async function ProgressionPage() {
 
       {/* Volume per week */}
       <WeeklyVolume weeks={serializedWeeks} currentWeekLabel={currentWeek.label} />
+
+      {/* Records personnels */}
+      <UserPRs activities={prActivities ?? []} />
     </div>
   )
 }
