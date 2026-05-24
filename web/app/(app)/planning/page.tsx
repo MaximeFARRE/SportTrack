@@ -26,14 +26,14 @@ export default async function PlanningPage({
   const weekStart = parseWeekStart(rawWeek)
   const weekEnd = format(addDays(parseISO(weekStart), 7), "yyyy-MM-dd")
 
-  const supabase = await createClient()
+  const supabase = (await createClient()) as any
   const {
     data: { user },
   } = await supabase.auth.getUser()
 
   if (!user) return null
 
-  const [sessionsResult, activitiesResult] = await Promise.all([
+  const [sessionsResult, activitiesResult, blocksResult, goalsResult] = await Promise.all([
     supabase
       .from("planned_sessions")
       .select(
@@ -46,20 +46,34 @@ export default async function PlanningPage({
       .order("created_at"),
     supabase
       .from("activities")
-      .select("id, name, sport_type, start_date, duration_sec")
+      .select("id, name, sport_type, start_date, duration_sec, distance_m")
       .eq("user_id", user.id)
       .gte("start_date", `${weekStart}T00:00:00`)
       .lt("start_date", `${weekEnd}T00:00:00`),
+    supabase
+      .from("training_blocks")
+      .select("id, name, start_date, end_date")
+      .eq("user_id", user.id)
+      .order("start_date"),
+    supabase
+      .from("training_goals")
+      .select("id, type, name, target_date, target_value")
+      .eq("user_id", user.id)
+      .order("created_at"),
   ])
 
   const sessions = (sessionsResult.data ?? []) as PlannedSession[]
   const activities = (activitiesResult.data ?? []) as ActivitySummary[]
+  const blocks = blocksResult.data ?? []
+  const goals = goalsResult.data ?? []
 
   return (
     <PlanningClient
       weekStart={weekStart}
       sessions={sessions}
       activities={activities}
+      blocks={blocks}
+      goals={goals}
     />
   )
 }
