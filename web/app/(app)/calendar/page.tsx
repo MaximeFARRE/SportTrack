@@ -28,7 +28,7 @@ export default async function CalendarPage({
   const nextMonth = month === 12 ? `${year + 1}-01` : `${year}-${String(month + 1).padStart(2, "0")}`
   const lastDay = `${nextMonth}-01`
 
-  const supabase = await createClient()
+  const supabase = (await createClient()) as any
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -37,7 +37,7 @@ export default async function CalendarPage({
 
   const today = new Date().toISOString().slice(0, 10)
 
-  const [activitiesResult, metricsResult, plannedResult] = await Promise.all([
+  const [activitiesResult, metricsResult, plannedResult, blocksResult] = await Promise.all([
     supabase
       .from("activities")
       .select("id, name, sport_type, start_date, duration_sec, distance_m")
@@ -55,25 +55,30 @@ export default async function CalendarPage({
       .lt("metric_date", lastDay),
     supabase
       .from("planned_sessions")
-      .select("planned_date, status")
+      .select("id, planned_date, sport_type, session_type, planned_duration_min, status, description, actual_activity_id")
       .eq("user_id", user.id)
       .gte("planned_date", firstDay)
       .lt("planned_date", lastDay),
+    supabase
+      .from("training_blocks")
+      .select("id, name, start_date, end_date")
+      .eq("user_id", user.id),
   ])
 
   const activities = activitiesResult.data ?? []
   const metrics = metricsResult.data ?? []
-  // Days with a planned session that was never completed (past only)
-  const missedDays = (plannedResult.data ?? [])
-    .filter((p) => p.status === "planned" && p.planned_date < today)
-    .map((p) => p.planned_date)
+  const plannedSessions = plannedResult.data ?? []
+  const missedDays = plannedSessions
+    .filter((p: any) => p.status === "planned" && p.planned_date < today)
+    .map((p: any) => p.planned_date)
+  const blocks = blocksResult.data ?? []
 
   // Build dayData map
   const dayData: Record<string, DayData> = {}
 
   for (const activity of activities) {
     const key = activity.start_date.slice(0, 10)
-    if (!dayData[key]) dayData[key] = { activities: [], metrics: null }
+    if (!dayData[key]) dayData[key] = { activities: [], metrics: null, plannedSessions: [] }
     dayData[key].activities.push({
       id: activity.id,
       name: activity.name,
@@ -83,9 +88,23 @@ export default async function CalendarPage({
     })
   }
 
+  for (const session of plannedSessions) {
+    const key = session.planned_date
+    if (!dayData[key]) dayData[key] = { activities: [], metrics: null, plannedSessions: [] }
+    if (!dayData[key].plannedSessions) dayData[key].plannedSessions = []
+    dayData[key].plannedSessions.push({
+      id: session.id,
+      sport_type: session.sport_type,
+      session_type: session.session_type,
+      planned_duration_min: session.planned_duration_min,
+      status: session.status,
+      description: session.description,
+    })
+  }
+
   for (const metric of metrics) {
     const key = metric.metric_date
-    if (!dayData[key]) dayData[key] = { activities: [], metrics: null }
+    if (!dayData[key]) dayData[key] = { activities: [], metrics: null, plannedSessions: [] }
     dayData[key].metrics = {
       training_load: metric.training_load,
       hrv_rmssd: metric.hrv_rmssd,
@@ -95,7 +114,7 @@ export default async function CalendarPage({
     }
   }
 
-  const allSports = [...new Set(activities.map((a) => a.sport_type))].sort()
+  const allSports = [...new Set(activities.map((a: any) => a.sport_type))].sort() as string[]
 
   return (
     <CalendarClient
@@ -104,6 +123,7 @@ export default async function CalendarPage({
       dayData={dayData}
       allSports={allSports}
       missedDays={missedDays}
+      blocks={blocks}
     />
   )
 }

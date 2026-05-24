@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ZoneBars, aggregateZones } from "@/components/activity/zone-bars"
 import type { ZoneEntry } from "@/components/activity/zone-bars"
+import { WeeklyVolume } from "@/components/progression/weekly-volume"
 
 export const metadata: Metadata = { title: "Progression · SportTrack" }
 
@@ -29,7 +30,7 @@ export default async function ProgressionPage() {
 
   const { data: activities } = await supabase
     .from("activities")
-    .select("start_date, duration_sec, distance_m, time_in_zones_json")
+    .select("sport_type, start_date, duration_sec, distance_m, time_in_zones_json")
     .eq("user_id", user.id)
     .gte("start_date", twelveWeeksAgo.toISOString())
     .order("start_date")
@@ -71,6 +72,23 @@ export default async function ProgressionPage() {
 
   const currentWeek = weeks[weeks.length - 1]
   const polarization = currentWeek.zones ? computePolarization(currentWeek.zones) : null
+  const serializedWeeks = weeks.map((w) => {
+    const sportBreakdown: Record<string, { sec: number; km: number }> = {}
+    ;(w.activities ?? []).forEach((a) => {
+      const sport = a.sport_type
+      if (!sportBreakdown[sport]) {
+        sportBreakdown[sport] = { sec: 0, km: 0 }
+      }
+      sportBreakdown[sport].sec += a.duration_sec ?? 0
+      sportBreakdown[sport].km += (a.distance_m ?? 0) / 1000
+    })
+    return {
+      label: w.label,
+      totalSec: w.totalSec,
+      totalKm: w.totalKm,
+      sportBreakdown,
+    }
+  })
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -156,37 +174,7 @@ export default async function ProgressionPage() {
       </Card>
 
       {/* Volume per week */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">Volume hebdomadaire</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          {weeks.map((week) => {
-            const maxSec = Math.max(...weeks.map((w) => w.totalSec), 1)
-            const pct = (week.totalSec / maxSec) * 100
-            const isCurrentWeek = week === currentWeek
-            const h = Math.floor(week.totalSec / 3600)
-            const m = Math.floor((week.totalSec % 3600) / 60)
-            const durationLabel = h > 0 ? `${h}h${m.toString().padStart(2, "0")}` : `${m}min`
-            return (
-              <div key={week.label} className="flex items-center gap-3 text-xs">
-                <span className={`w-12 shrink-0 ${isCurrentWeek ? "font-semibold text-primary" : "text-muted-foreground"}`}>
-                  {week.label}
-                </span>
-                <div className="flex-1 overflow-hidden rounded-sm bg-muted">
-                  <div
-                    className={`h-4 rounded-sm transition-all ${isCurrentWeek ? "bg-primary" : "bg-primary/40"}`}
-                    style={{ width: `${pct}%` }}
-                  />
-                </div>
-                <span className="w-14 shrink-0 text-right tabular-nums text-muted-foreground">
-                  {week.totalSec > 0 ? durationLabel : "–"}
-                </span>
-              </div>
-            )
-          })}
-        </CardContent>
-      </Card>
+      <WeeklyVolume weeks={serializedWeeks} currentWeekLabel={currentWeek.label} />
     </div>
   )
 }
