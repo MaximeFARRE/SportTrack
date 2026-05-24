@@ -4,6 +4,10 @@ import { NextRequest, NextResponse } from "next/server"
 import { createServiceClient } from "@/lib/supabase/service"
 import { createClient } from "@/lib/supabase/server"
 
+function getStateSecret() {
+  return process.env.STRAVA_STATE_SECRET ?? process.env.INTERNAL_SECRET
+}
+
 export async function GET(request: NextRequest) {
   const supabase = await createClient()
   const {
@@ -26,7 +30,7 @@ export async function GET(request: NextRequest) {
 
   const nonce = randomUUID()
   const payload = JSON.stringify({ user_id: user.id, nonce })
-  const stateSecret = process.env.STRAVA_STATE_SECRET
+  const stateSecret = getStateSecret()
   if (!stateSecret) {
     return NextResponse.redirect(`${baseUrl}/settings/strava?error=missing_state_secret`)
   }
