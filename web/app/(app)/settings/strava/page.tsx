@@ -31,8 +31,8 @@ export default async function StravaSettingsPage({
 
       {error === "missing_state_secret" ? (
         <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
-          La variable STRAVA_STATE_SECRET doit être configurée côté serveur avant de lancer la
-          connexion Strava.
+          La variable STRAVA_STATE_SECRET ou INTERNAL_SECRET doit être configurée côté serveur
+          avant de lancer la connexion Strava.
         </div>
       ) : null}
 
