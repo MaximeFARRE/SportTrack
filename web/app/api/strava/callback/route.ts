@@ -22,7 +22,7 @@ function verifyState(state: string): { user_id: string } {
 }
 
 export async function GET(request: NextRequest) {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL!
+  const baseUrl = request.nextUrl.origin
   const { searchParams } = request.nextUrl
 
   const error = searchParams.get("error")

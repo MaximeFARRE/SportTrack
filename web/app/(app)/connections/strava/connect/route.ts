@@ -1,16 +1,16 @@
 import { createHmac, randomUUID } from "crypto"
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 
 import { createServiceClient } from "@/lib/supabase/service"
 import { createClient } from "@/lib/supabase/server"
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const supabase = await createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
 
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL!
+  const baseUrl = request.nextUrl.origin
 
   if (!user) {
     return NextResponse.redirect(`${baseUrl}/login`)

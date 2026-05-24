@@ -11,6 +11,25 @@ export interface StravaConfigData {
   client_secret: string
 }
 
+function formatStravaError(json: Record<string, unknown>, status: number): string {
+  const errors = Array.isArray(json.errors)
+    ? json.errors
+        .map((error) => {
+          if (!error || typeof error !== "object") return null
+          const { resource, field, code } = error as Record<string, unknown>
+          return [resource, field, code].filter(Boolean).join(" ")
+        })
+        .filter(Boolean)
+    : []
+
+  if (errors.length > 0) return errors.join(", ")
+  return (json.message as string | undefined) ?? `Erreur ${status}`
+}
+
+function isExistingSubscriptionError(json: Record<string, unknown>): boolean {
+  return JSON.stringify(json).toLowerCase().includes("already exists")
+}
+
 async function requireAdmin(): Promise<void> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -105,8 +124,10 @@ export async function registerStravaWebhook(): Promise<{ ok?: boolean; error?: s
   const json = await res.json().catch(() => ({})) as Record<string, unknown>
 
   if (!res.ok) {
-    const msg = (json.message as string | undefined) ?? (json.errors as string | undefined) ?? `Erreur ${res.status}`
-    return { error: String(msg) }
+    if (res.status === 400 && isExistingSubscriptionError(json)) {
+      return { ok: true }
+    }
+    return { error: formatStravaError(json, res.status) }
   }
 
   return { ok: true, subscription_id: json.id as number | undefined }
