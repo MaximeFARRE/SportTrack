@@ -417,6 +417,10 @@ function CreateBlockDialog({
       setError("Veuillez remplir tous les champs")
       return
     }
+    if (startDate > endDate) {
+      setError("La date de début doit être antérieure ou égale à la date de fin")
+      return
+    }
 
     startTransition(async () => {
       const res = await createTrainingBlock({ name, start_date: startDate, end_date: endDate })
