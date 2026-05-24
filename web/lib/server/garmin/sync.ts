@@ -155,6 +155,10 @@ export async function testGarminConnection(
 
 export async function syncGarminMetrics(userId: string, days = 30): Promise<number> {
   const credentials = await getCredentials(userId)
+  if (!credentials.token_data) {
+    throw new Error("Reconnectez Garmin avant d'importer les données.")
+  }
+
   const result = await runGarminBridge({
     command: "sync",
     email: credentials.email,
