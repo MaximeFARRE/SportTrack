@@ -8,13 +8,17 @@ function getStateSecret() {
   return process.env.STRAVA_STATE_SECRET ?? process.env.INTERNAL_SECRET
 }
 
+function getBaseUrl(origin: string) {
+  return (process.env.NEXT_PUBLIC_BASE_URL ?? origin).replace(/\/$/, "")
+}
+
 export async function GET(request: NextRequest) {
   const supabase = await createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
 
-  const baseUrl = request.nextUrl.origin
+  const baseUrl = getBaseUrl(request.nextUrl.origin)
 
   if (!user) {
     return NextResponse.redirect(`${baseUrl}/login`)

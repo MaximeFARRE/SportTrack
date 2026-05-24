@@ -5,6 +5,10 @@ function getStateSecret() {
   return process.env.STRAVA_STATE_SECRET ?? process.env.INTERNAL_SECRET
 }
 
+function getBaseUrl(origin: string) {
+  return (process.env.NEXT_PUBLIC_BASE_URL ?? origin).replace(/\/$/, "")
+}
+
 function verifyState(state: string): { user_id: string } {
   const decoded = JSON.parse(Buffer.from(state, "base64url").toString("utf-8"))
   const { payload, sig } = decoded as { payload: string; sig: string }
@@ -26,7 +30,7 @@ function verifyState(state: string): { user_id: string } {
 }
 
 export async function GET(request: NextRequest) {
-  const baseUrl = request.nextUrl.origin
+  const baseUrl = getBaseUrl(request.nextUrl.origin)
   const { searchParams } = request.nextUrl
 
   const error = searchParams.get("error")
