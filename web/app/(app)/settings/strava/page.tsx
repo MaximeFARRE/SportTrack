@@ -51,18 +51,6 @@ export default async function StravaSettingsPage() {
         </div>
 
         <div className="space-y-1">
-          <p className="font-medium">Webhook Verify Token</p>
-          <p className="text-muted-foreground">
-            Valeur libre que <strong>vous choisissez</strong> (ex. une chaîne aléatoire de 32
-            caractères). Elle sera utilisée lors de la validation du webhook Strava. Notez-la — vous
-            en aurez besoin lors de l&apos;enregistrement du webhook avec :{" "}
-            <span className="font-mono bg-background px-1 rounded text-foreground">
-              curl -X POST https://www.strava.com/api/v3/push_subscriptions ...
-            </span>
-          </p>
-        </div>
-
-        <div className="space-y-1">
           <p className="font-medium">Callback URL à renseigner dans Strava</p>
           <p className="text-muted-foreground">
             Dans le champ <strong>« Authorization Callback Domain »</strong> de votre app Strava,

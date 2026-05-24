@@ -83,21 +83,8 @@ export function StravaConfigForm({ initialConfig }: Props) {
                 autoComplete="new-password"
               />
               <p className="text-xs text-muted-foreground">
-                Stocké côté serveur — jamais exposé au navigateur.
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="webhook_verify_token">Webhook Verify Token</Label>
-              <Input
-                id="webhook_verify_token"
-                name="webhook_verify_token"
-                placeholder="mon-token-secret-webhook"
-                defaultValue={initialConfig.webhook_verify_token}
-                autoComplete="off"
-              />
-              <p className="text-xs text-muted-foreground">
-                Valeur libre que vous choisissez — utilisée pour valider le webhook Strava.
+                Stocké côté serveur. Le token de vérification du webhook est généré
+                automatiquement.
               </p>
             </div>
 

@@ -1,5 +1,6 @@
 "use server"
 
+import { randomBytes } from "crypto"
 import { redirect } from "next/navigation"
 
 import { createClient } from "@/lib/supabase/server"
@@ -8,7 +9,6 @@ import { createServiceClient } from "@/lib/supabase/service"
 export interface StravaConfigData {
   client_id: string
   client_secret: string
-  webhook_verify_token: string
 }
 
 async function requireAdmin(): Promise<void> {
@@ -37,7 +37,6 @@ export async function getStravaConfig(): Promise<StravaConfigData> {
   return {
     client_id: data?.client_id ?? "",
     client_secret: data?.client_secret ?? "",
-    webhook_verify_token: data?.webhook_verify_token ?? "",
   }
 }
 
@@ -47,9 +46,16 @@ export async function saveStravaConfig(
   await requireAdmin()
   const client_id = (formData.get("client_id") as string | null)?.trim() ?? ""
   const client_secret = (formData.get("client_secret") as string | null)?.trim() ?? ""
-  const webhook_verify_token = (formData.get("webhook_verify_token") as string | null)?.trim() ?? ""
 
   const service = createServiceClient()
+  const { data: current } = await service
+    .from("strava_config")
+    .select("webhook_verify_token")
+    .eq("id", 1)
+    .maybeSingle()
+
+  const webhook_verify_token = current?.webhook_verify_token || randomBytes(32).toString("hex")
+
   const { error } = await service
     .from("strava_config")
     .upsert({ id: 1, client_id, client_secret, webhook_verify_token }, { onConflict: "id" })
@@ -75,7 +81,7 @@ export async function registerStravaWebhook(): Promise<{ ok?: boolean; error?: s
     return { error: "Enregistre d'abord le Client ID et Client Secret." }
   }
   if (!cfg.webhook_verify_token) {
-    return { error: "Enregistre d'abord un Webhook Verify Token." }
+    return { error: "Enregistre d'abord les identifiants Strava." }
   }
 
   const body = new URLSearchParams({

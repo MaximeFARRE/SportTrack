@@ -3,7 +3,19 @@ import { NextResponse, type NextRequest } from "next/server"
 
 import type { Database } from "@/lib/types/database"
 
-const PUBLIC_PATHS = ["/", "/login", "/signup", "/forgot-password", "/reset-password", "/auth/callback"]
+const PUBLIC_PATHS = [
+  "/",
+  "/login",
+  "/signup",
+  "/forgot-password",
+  "/reset-password",
+  "/auth/callback",
+  "/api/cron/daily-injury",
+  "/api/cron/daily-risk",
+  "/api/strava/callback",
+  "/api/strava/webhook",
+  "/api/terra/webhook",
+]
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request })
