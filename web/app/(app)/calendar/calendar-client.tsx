@@ -111,6 +111,16 @@ function formatDistance(m: number | null): string {
   return `${Math.round(m)} m`
 }
 
+function formatCellDuration(min: number): string {
+  if (min <= 0) return ""
+  const h = Math.floor(min / 60)
+  const m = Math.round(min % 60)
+  if (h > 0) {
+    return m > 0 ? `${h}h${m.toString().padStart(2, "0")}` : `${h}h`
+  }
+  return `${m}m`
+}
+
 /** Returns bg class string based on intensity 0–4 */
 function heatClass(bucket: number): string {
   switch (bucket) {
@@ -310,7 +320,7 @@ export function CalendarClient({
         <div className="grid grid-cols-7">
           {dayKeys.map((key, idx) => {
             if (!key) {
-              return <div key={`empty-${idx}`} className="aspect-square border-b border-r last:border-r-0 bg-muted/30" />
+              return <div key={`empty-${idx}`} className="h-16 sm:h-22 border-b border-r last:border-r-0 bg-muted/30" />
             }
 
             const data = filteredDayData[key]
@@ -329,12 +339,19 @@ export function CalendarClient({
               .filter((p) => p.status === "planned" || p.status === "modified")
             const plannedSports = [...new Set(activePlans.map((p) => p.sport_type))]
 
+            const totalDistM = data?.activities.reduce((sum, a) => sum + (a.distance_m ?? 0), 0) ?? 0
+            const totalDurSec = data?.activities.reduce((sum, a) => sum + (a.duration_sec ?? 0), 0) ?? 0
+            const hasActivity = totalDistM > 0 || totalDurSec > 0
+
+            const totalPlannedDur = activePlans.reduce((sum, p) => sum + (p.planned_duration_min ?? 0), 0)
+            const hasPlanned = activePlans.length > 0
+
             return (
               <button
                 key={key}
                 onClick={() => setSelectedDay(key)}
                 className={cn(
-                  "relative aspect-square border-b border-r p-1 text-left transition-opacity hover:opacity-80",
+                  "relative h-16 sm:h-22 w-full border-b border-r p-1 sm:p-1.5 text-left transition-opacity hover:opacity-80",
                   (idx + 1) % 7 === 0 && "border-r-0",
                   heatClass(bucket),
                   dayBlock && "pt-2",
@@ -352,7 +369,7 @@ export function CalendarClient({
                 <div className="flex items-center justify-between">
                   <span
                     className={cn(
-                      "inline-flex h-5 w-5 items-center justify-center rounded-full text-xs",
+                      "inline-flex h-6 w-6 items-center justify-center rounded-full text-xs sm:text-sm",
                       isToday && "bg-primary text-primary-foreground font-bold",
                     )}
                   >
@@ -360,7 +377,7 @@ export function CalendarClient({
                   </span>
                   {dayRace && (
                     <span
-                      className="text-xs shrink-0 mr-0.5"
+                      className="text-sm shrink-0 mr-0.5"
                       title={`🏁 Course : ${dayRace.name}`}
                     >
                       🏁
@@ -386,14 +403,14 @@ export function CalendarClient({
                 {(sports.length > 0 || plannedSports.length > 0) && (
                   <div className="mt-0.5 flex flex-wrap gap-1 items-center">
                     {sports.map((sport) => (
-                      <span key={`act-${sport}`} className="text-[10px] leading-none" title={SPORT_LABELS[sport] ?? sport}>
+                      <span key={`act-${sport}`} className="text-xs sm:text-sm leading-none" title={SPORT_LABELS[sport] ?? sport}>
                         {SPORT_EMOJIS[sport] ?? "🏅"}
                       </span>
                     ))}
                     {plannedSports.map((sport) => (
                       <span
                         key={`plan-${sport}`}
-                        className="text-[9px] leading-none opacity-60 grayscale border border-dashed border-muted-foreground/40 rounded px-0.5 py-px"
+                        className="text-[10px] sm:text-xs leading-none opacity-60 grayscale border border-dashed border-muted-foreground/40 rounded px-0.5 py-px"
                         title={`Planifié : ${SPORT_LABELS[sport] ?? sport}`}
                       >
                         {SPORT_EMOJIS[sport] ?? "🏅"}
@@ -401,6 +418,19 @@ export function CalendarClient({
                     ))}
                   </div>
                 )}
+
+                {/* Volume details (only on desktop where there is room) */}
+                {hasActivity ? (
+                  <div className="absolute bottom-1 right-1 left-1 hidden sm:flex items-center justify-between text-[9px] font-medium text-muted-foreground/80 bg-muted/30 px-1 py-0.5 rounded-sm shrink-0">
+                    <span className="truncate">{totalDistM > 0 ? `${(totalDistM / 1000).toFixed(1)}km` : ""}</span>
+                    <span className="shrink-0">{totalDurSec > 0 ? formatCellDuration(totalDurSec / 60) : ""}</span>
+                  </div>
+                ) : hasPlanned ? (
+                  <div className="absolute bottom-1 right-1 left-1 hidden sm:flex items-center justify-between text-[9px] font-medium text-muted-foreground/60 border border-dashed border-muted-foreground/20 px-1 py-0.5 rounded-sm shrink-0">
+                    <span className="truncate">Planifié</span>
+                    <span className="shrink-0">{formatCellDuration(totalPlannedDur)}</span>
+                  </div>
+                ) : null}
               </button>
             )
           })}
