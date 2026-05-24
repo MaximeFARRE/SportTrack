@@ -55,7 +55,7 @@ export default async function CalendarPage({
       .lt("metric_date", lastDay),
     supabase
       .from("planned_sessions")
-      .select("planned_date, status")
+      .select("id, planned_date, sport_type, session_type, planned_duration_min, status, description, actual_activity_id")
       .eq("user_id", user.id)
       .gte("planned_date", firstDay)
       .lt("planned_date", lastDay),
@@ -67,7 +67,8 @@ export default async function CalendarPage({
 
   const activities = activitiesResult.data ?? []
   const metrics = metricsResult.data ?? []
-  const missedDays = (plannedResult.data ?? [])
+  const plannedSessions = plannedResult.data ?? []
+  const missedDays = plannedSessions
     .filter((p: any) => p.status === "planned" && p.planned_date < today)
     .map((p: any) => p.planned_date)
   const blocks = blocksResult.data ?? []
@@ -77,7 +78,7 @@ export default async function CalendarPage({
 
   for (const activity of activities) {
     const key = activity.start_date.slice(0, 10)
-    if (!dayData[key]) dayData[key] = { activities: [], metrics: null }
+    if (!dayData[key]) dayData[key] = { activities: [], metrics: null, plannedSessions: [] }
     dayData[key].activities.push({
       id: activity.id,
       name: activity.name,
@@ -87,9 +88,23 @@ export default async function CalendarPage({
     })
   }
 
+  for (const session of plannedSessions) {
+    const key = session.planned_date
+    if (!dayData[key]) dayData[key] = { activities: [], metrics: null, plannedSessions: [] }
+    if (!dayData[key].plannedSessions) dayData[key].plannedSessions = []
+    dayData[key].plannedSessions.push({
+      id: session.id,
+      sport_type: session.sport_type,
+      session_type: session.session_type,
+      planned_duration_min: session.planned_duration_min,
+      status: session.status,
+      description: session.description,
+    })
+  }
+
   for (const metric of metrics) {
     const key = metric.metric_date
-    if (!dayData[key]) dayData[key] = { activities: [], metrics: null }
+    if (!dayData[key]) dayData[key] = { activities: [], metrics: null, plannedSessions: [] }
     dayData[key].metrics = {
       training_load: metric.training_load,
       hrv_rmssd: metric.hrv_rmssd,

@@ -34,9 +34,19 @@ export type MetricSummary = {
   training_readiness: number | null
 }
 
+export type PlannedSessionSummary = {
+  id: string
+  sport_type: string
+  session_type: string
+  planned_duration_min: number | null
+  status: string
+  description: string | null
+}
+
 export type DayData = {
   activities: ActivitySummary[]
   metrics: MetricSummary | null
+  plannedSessions?: PlannedSessionSummary[]
 }
 
 export type TrainingBlock = {
@@ -309,6 +319,9 @@ export function CalendarClient({
             const dayBlock = blocks.find(
               (b) => b.start_date <= key && b.end_date >= key
             )
+            const activePlans = (data?.plannedSessions ?? [])
+              .filter((p) => p.status === "planned" || p.status === "modified")
+            const plannedSports = [...new Set(activePlans.map((p) => p.sport_type))]
 
             return (
               <button
@@ -347,16 +360,22 @@ export function CalendarClient({
                 )}
 
                 {/* Sport emojis */}
-                {sports.length > 0 && (
-                  <div className="mt-0.5 flex flex-wrap gap-px">
-                    {sports.slice(0, 3).map((sport) => (
-                      <span key={sport} className="text-[10px] leading-none">
+                {(sports.length > 0 || plannedSports.length > 0) && (
+                  <div className="mt-0.5 flex flex-wrap gap-1 items-center">
+                    {sports.map((sport) => (
+                      <span key={`act-${sport}`} className="text-[10px] leading-none" title={SPORT_LABELS[sport] ?? sport}>
                         {SPORT_EMOJIS[sport] ?? "🏅"}
                       </span>
                     ))}
-                    {sports.length > 3 && (
-                      <span className="text-[9px] text-muted-foreground">+{sports.length - 3}</span>
-                    )}
+                    {plannedSports.map((sport) => (
+                      <span
+                        key={`plan-${sport}`}
+                        className="text-[9px] leading-none opacity-60 grayscale border border-dashed border-muted-foreground/40 rounded px-0.5 py-px"
+                        title={`Planifié : ${SPORT_LABELS[sport] ?? sport}`}
+                      >
+                        {SPORT_EMOJIS[sport] ?? "🏅"}
+                      </span>
+                    ))}
                   </div>
                 )}
               </button>
@@ -436,6 +455,57 @@ export function CalendarClient({
                       Ajouter une activité
                     </Button>
                   </Link>
+                </section>
+
+                {/* Séances planifiées */}
+                <section>
+                  <h3 className="mb-2 text-sm font-semibold">Séances planifiées</h3>
+                  {selectedDayData?.plannedSessions?.length ? (
+                    <div className="space-y-2">
+                      {selectedDayData.plannedSessions.map((session) => {
+                        let statusText = "À faire"
+                        let statusColor = "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300"
+                        if (session.status === "completed") {
+                          statusText = "Réalisée"
+                          statusColor = "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
+                        } else if (session.status === "skipped") {
+                          statusText = "Ignorée"
+                          statusColor = "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400"
+                        }
+                        
+                        return (
+                          <div
+                            key={session.id}
+                            className="rounded-lg border bg-card p-3 text-sm space-y-1.5 border-border"
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <span>{SPORT_EMOJIS[session.sport_type] ?? "🏅"}</span>
+                                <span className="font-medium capitalize text-foreground">
+                                  {session.session_type.replace("_", " ")}
+                                </span>
+                              </div>
+                              <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold shrink-0", statusColor)}>
+                                {statusText}
+                              </span>
+                            </div>
+                            {session.planned_duration_min && (
+                              <p className="text-xs text-muted-foreground">
+                                Durée planifiée : {session.planned_duration_min} min
+                              </p>
+                            )}
+                            {session.description && (
+                              <p className="text-xs text-muted-foreground italic">
+                                &ldquo;{session.description}&rdquo;
+                              </p>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Aucune séance planifiée ce jour.</p>
+                  )}
                 </section>
 
                 {/* Récupération */}
