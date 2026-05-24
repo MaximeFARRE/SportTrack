@@ -30,7 +30,7 @@ export default async function ProgressionPage() {
 
   const { data: activities } = await supabase
     .from("activities")
-    .select("start_date, duration_sec, distance_m, time_in_zones_json")
+    .select("sport_type, start_date, duration_sec, distance_m, time_in_zones_json")
     .eq("user_id", user.id)
     .gte("start_date", twelveWeeksAgo.toISOString())
     .order("start_date")
@@ -72,11 +72,23 @@ export default async function ProgressionPage() {
 
   const currentWeek = weeks[weeks.length - 1]
   const polarization = currentWeek.zones ? computePolarization(currentWeek.zones) : null
-  const serializedWeeks = weeks.map((w) => ({
-    label: w.label,
-    totalSec: w.totalSec,
-    totalKm: w.totalKm,
-  }))
+  const serializedWeeks = weeks.map((w) => {
+    const sportBreakdown: Record<string, { sec: number; km: number }> = {}
+    ;(w.activities ?? []).forEach((a) => {
+      const sport = a.sport_type
+      if (!sportBreakdown[sport]) {
+        sportBreakdown[sport] = { sec: 0, km: 0 }
+      }
+      sportBreakdown[sport].sec += a.duration_sec ?? 0
+      sportBreakdown[sport].km += (a.distance_m ?? 0) / 1000
+    })
+    return {
+      label: w.label,
+      totalSec: w.totalSec,
+      totalKm: w.totalKm,
+      sportBreakdown,
+    }
+  })
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
