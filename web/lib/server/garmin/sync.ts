@@ -19,6 +19,33 @@ type GarminScriptResult = {
   metrics?: GarminMetric[]
 }
 
+function getDeploymentBaseUrl(): string | null {
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`
+  return process.env.NEXT_PUBLIC_BASE_URL ?? null
+}
+
+async function runGarminBridge(payload: Record<string, unknown>): Promise<GarminScriptResult> {
+  const baseUrl = getDeploymentBaseUrl()
+  if (baseUrl && process.env.NODE_ENV === "production") {
+    const secret = process.env.GARMIN_BRIDGE_SECRET ?? process.env.INTERNAL_SECRET ?? ""
+    const res = await fetch(`${baseUrl.replace(/\/$/, "")}/api/garmin`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(secret ? { "x-garmin-bridge-secret": secret } : {}),
+      },
+      body: JSON.stringify(payload),
+    })
+    const json = (await res.json().catch(() => ({}))) as GarminScriptResult
+    if (!res.ok || !json.ok) {
+      throw new Error(json.error ?? `Garmin bridge failed: ${res.status}`)
+    }
+    return json
+  }
+
+  return runGarminScript(payload)
+}
+
 function runGarminScript(payload: Record<string, unknown>): Promise<GarminScriptResult> {
   return new Promise((resolve, reject) => {
     const scriptPath = path.join(process.cwd(), "scripts", "garmin_sync.py")
@@ -71,7 +98,7 @@ export async function testGarminConnection(
   userId: string,
   opts: { email: string; password: string; mfaCode?: string },
 ): Promise<void> {
-  const result = await runGarminScript({
+  const result = await runGarminBridge({
     command: "test",
     email: opts.email,
     password: opts.password,
@@ -102,7 +129,7 @@ export async function testGarminConnection(
 
 export async function syncGarminMetrics(userId: string, days = 30): Promise<number> {
   const credentials = await getCredentials(userId)
-  const result = await runGarminScript({
+  const result = await runGarminBridge({
     command: "sync",
     email: credentials.email,
     password: credentials.password,
