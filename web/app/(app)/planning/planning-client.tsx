@@ -583,6 +583,11 @@ function CreateGoalDialog({
                 💪 Séances (nb)
               </button>
             </div>
+            <p className="text-[11px] text-muted-foreground mt-1">
+              {type === "race" && "🏁 Course : Affiche un compte à rebours de jours restants (J-X) sur votre planning."}
+              {type === "weekly_volume" && "📈 Volume (km) : Définit une cible de kilomètres hebdomadaires avec une barre de progression."}
+              {type === "weekly_workouts" && "💪 Séances (nb) : Fixe un nombre de séances à réaliser par semaine avec suivi de progression."}
+            </p>
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="goal-name">Nom / Description</Label>
@@ -590,10 +595,10 @@ function CreateGoalDialog({
               id="goal-name"
               placeholder={
                 type === "race"
-                  ? "Marathon de Paris, Trail du Ventoux..."
+                  ? "Ex: Marathon de Paris, Trail du Ventoux..."
                   : type === "weekly_volume"
-                    ? "Volume hebdomadaire de base, Objectif foncier..."
-                    : "Nombre de séances hebdomadaires..."
+                    ? "Ex: Objectif volume foncier, Volume de base..."
+                    : "Ex: Régularité hebdomadaire..."
               }
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -608,6 +613,7 @@ function CreateGoalDialog({
                 value={targetDate}
                 onChange={(e) => setTargetDate(e.target.value)}
               />
+              <p className="text-[11px] text-muted-foreground">La date de l&apos;événement pour calculer les jours restants.</p>
             </div>
           ) : (
             <div className="space-y-1.5">
@@ -619,10 +625,15 @@ function CreateGoalDialog({
                 type="number"
                 min="1"
                 step="any"
-                placeholder={type === "weekly_volume" ? "50" : "4"}
+                placeholder={type === "weekly_volume" ? "Ex: 50" : "Ex: 4"}
                 value={targetValue}
                 onChange={(e) => setTargetValue(e.target.value)}
               />
+              <p className="text-[11px] text-muted-foreground">
+                {type === "weekly_volume"
+                  ? "Indiquez la distance totale en kilomètres que vous visez chaque semaine."
+                  : "Indiquez le nombre de séances d'entraînement que vous visez chaque semaine."}
+              </p>
             </div>
           )}
           {error && <p className="text-xs text-destructive">{error}</p>}
