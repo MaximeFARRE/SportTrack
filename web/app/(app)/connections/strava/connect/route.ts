@@ -26,7 +26,7 @@ export async function GET() {
 
   const nonce = randomUUID()
   const payload = JSON.stringify({ user_id: user.id, nonce })
-  const stateSecret = process.env.STRAVA_STATE_SECRET ?? process.env.INTERNAL_SECRET
+  const stateSecret = process.env.STRAVA_STATE_SECRET
   if (!stateSecret) {
     return NextResponse.redirect(`${baseUrl}/settings/strava?error=missing_state_secret`)
   }

@@ -5,7 +5,7 @@ function verifyState(state: string): { user_id: string } {
   const decoded = JSON.parse(Buffer.from(state, "base64url").toString("utf-8"))
   const { payload, sig } = decoded as { payload: string; sig: string }
 
-  const stateSecret = process.env.STRAVA_STATE_SECRET ?? process.env.INTERNAL_SECRET
+  const stateSecret = process.env.STRAVA_STATE_SECRET
   if (!stateSecret) throw new Error("state secret manquant")
   const expected = createHmac("sha256", stateSecret).update(payload).digest("hex")
 
