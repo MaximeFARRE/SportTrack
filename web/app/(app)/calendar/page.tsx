@@ -28,7 +28,7 @@ export default async function CalendarPage({
   const nextMonth = month === 12 ? `${year + 1}-01` : `${year}-${String(month + 1).padStart(2, "0")}`
   const lastDay = `${nextMonth}-01`
 
-  const supabase = await createClient()
+  const supabase = (await createClient()) as any
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -37,7 +37,7 @@ export default async function CalendarPage({
 
   const today = new Date().toISOString().slice(0, 10)
 
-  const [activitiesResult, metricsResult, plannedResult] = await Promise.all([
+  const [activitiesResult, metricsResult, plannedResult, blocksResult] = await Promise.all([
     supabase
       .from("activities")
       .select("id, name, sport_type, start_date, duration_sec, distance_m")
@@ -59,14 +59,18 @@ export default async function CalendarPage({
       .eq("user_id", user.id)
       .gte("planned_date", firstDay)
       .lt("planned_date", lastDay),
+    supabase
+      .from("training_blocks")
+      .select("id, name, start_date, end_date")
+      .eq("user_id", user.id),
   ])
 
   const activities = activitiesResult.data ?? []
   const metrics = metricsResult.data ?? []
-  // Days with a planned session that was never completed (past only)
   const missedDays = (plannedResult.data ?? [])
-    .filter((p) => p.status === "planned" && p.planned_date < today)
-    .map((p) => p.planned_date)
+    .filter((p: any) => p.status === "planned" && p.planned_date < today)
+    .map((p: any) => p.planned_date)
+  const blocks = blocksResult.data ?? []
 
   // Build dayData map
   const dayData: Record<string, DayData> = {}
@@ -95,7 +99,7 @@ export default async function CalendarPage({
     }
   }
 
-  const allSports = [...new Set(activities.map((a) => a.sport_type))].sort()
+  const allSports = [...new Set(activities.map((a: any) => a.sport_type))].sort() as string[]
 
   return (
     <CalendarClient
@@ -104,6 +108,7 @@ export default async function CalendarPage({
       dayData={dayData}
       allSports={allSports}
       missedDays={missedDays}
+      blocks={blocks}
     />
   )
 }

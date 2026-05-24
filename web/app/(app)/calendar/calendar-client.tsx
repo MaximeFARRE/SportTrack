@@ -39,6 +39,13 @@ export type DayData = {
   metrics: MetricSummary | null
 }
 
+export type TrainingBlock = {
+  id: string
+  name: string
+  start_date: string
+  end_date: string
+}
+
 type Metric = "charge" | "duration" | "distance"
 
 const SPORT_EMOJIS: Record<string, string> = {
@@ -146,12 +153,14 @@ export function CalendarClient({
   dayData,
   allSports,
   missedDays = [],
+  blocks = [],
 }: {
   year: number
   month: number
   dayData: Record<string, DayData>
   allSports: string[]
   missedDays?: string[]
+  blocks?: TrainingBlock[]
 }) {
   const router = useRouter()
   const [selectedDay, setSelectedDay] = useState<string | null>(null)
@@ -297,6 +306,9 @@ export function CalendarClient({
             const isMissed = missedSet.has(key)
             const dayNum = parseInt(key.split("-")[2], 10)
             const sports = [...new Set(data?.activities.map((a) => a.sport_type) ?? [])]
+            const dayBlock = blocks.find(
+              (b) => b.start_date <= key && b.end_date >= key
+            )
 
             return (
               <button
@@ -306,8 +318,17 @@ export function CalendarClient({
                   "relative aspect-square border-b border-r p-1 text-left transition-opacity hover:opacity-80",
                   (idx + 1) % 7 === 0 && "border-r-0",
                   heatClass(bucket),
+                  dayBlock && "pt-2",
                 )}
               >
+                {/* Block color strip */}
+                {dayBlock && (
+                  <div
+                    className="absolute top-0 inset-x-0 h-1 bg-indigo-500 dark:bg-indigo-400"
+                    title={`Bloc : ${dayBlock.name}`}
+                  />
+                )}
+
                 {/* Day number */}
                 <span
                   className={cn(
@@ -364,6 +385,18 @@ export function CalendarClient({
                     .replace(/^\w/, (c) => c.toUpperCase())}
                 </SheetTitle>
               </SheetHeader>
+
+              {(() => {
+                const dayBlock = blocks.find(
+                  (b) => b.start_date <= selectedDay && b.end_date >= selectedDay
+                )
+                if (!dayBlock) return null
+                return (
+                  <div className="mx-4 mb-4 rounded-md bg-indigo-50 px-3 py-1.5 text-xs text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 font-medium border border-indigo-200 dark:border-indigo-900/50">
+                    🧱 Bloc d&apos;entraînement : {dayBlock.name}
+                  </div>
+                )
+              })()}
 
               <div className="space-y-5 px-4 pb-4">
                 {/* Activités */}

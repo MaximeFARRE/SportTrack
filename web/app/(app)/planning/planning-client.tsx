@@ -839,15 +839,26 @@ export function PlanningClient({
                 const isToday = dayKey === today
                 const dayLabel = format(parseISO(dayKey), "EEE d", { locale: fr })
                 const dayLabelCapitalized = dayLabel.charAt(0).toUpperCase() + dayLabel.slice(1)
+                const dayBlock = initialBlocks.find(
+                  (b) => b.start_date <= dayKey && b.end_date >= dayKey
+                )
 
                 return (
                   <div key={dayKey} className="flex flex-col gap-1">
+                    {dayBlock && (
+                      <div
+                        className="h-1 w-full bg-indigo-500 dark:bg-indigo-400 rounded-full shrink-0"
+                        title={`Bloc : ${dayBlock.name}`}
+                      />
+                    )}
                     {/* Day header */}
                     <div
                       className={cn(
                         "rounded-md px-1.5 py-1 text-center text-xs font-medium",
                         isToday ? "bg-primary text-primary-foreground" : "text-muted-foreground",
+                        dayBlock && !isToday && "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300",
                       )}
+                      title={dayBlock ? `Bloc : ${dayBlock.name}` : undefined}
                     >
                       {dayLabelCapitalized}
                     </div>
@@ -911,9 +922,19 @@ export function PlanningClient({
               const totalItems = daySessions.length + dayActivities.length
               const dayLabel = format(parseISO(dayKey), "EEEE d MMMM", { locale: fr })
               const dayLabelCapitalized = dayLabel.charAt(0).toUpperCase() + dayLabel.slice(1)
+              const dayBlock = initialBlocks.find(
+                (b) => b.start_date <= dayKey && b.end_date >= dayKey
+              )
 
               return (
-                <div key={dayKey} className={cn("rounded-lg border bg-card", isToday && "border-primary/50")}>
+                <div
+                  key={dayKey}
+                  className={cn(
+                    "rounded-lg border bg-card transition-colors",
+                    isToday && "border-primary/50",
+                    dayBlock && !isToday && "border-indigo-200 dark:border-indigo-950/60",
+                  )}
+                >
                   {/* Accordion header */}
                   <button
                     className="flex w-full items-center justify-between px-4 py-3 cursor-pointer"
@@ -927,6 +948,12 @@ export function PlanningClient({
                     }
                   >
                     <div className="flex items-center gap-2">
+                      {dayBlock && (
+                        <span
+                          className="h-2 w-2 rounded-full bg-indigo-500 dark:bg-indigo-400 shrink-0"
+                          title={`Bloc : ${dayBlock.name}`}
+                        />
+                      )}
                       <span className={cn("text-sm font-medium", isToday && "text-primary")}>
                         {dayLabelCapitalized}
                       </span>
