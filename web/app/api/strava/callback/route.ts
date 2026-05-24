@@ -44,8 +44,12 @@ export async function GET(request: NextRequest) {
     const { exchangeCodeForToken, upsertStravaConnection } = await import(
       "@/lib/server/strava/tokens"
     )
+    const { syncRecentStrava } = await import("@/lib/server/strava/sync")
     const token = await exchangeCodeForToken(code)
     await upsertStravaConnection(user_id, token)
+    await syncRecentStrava(user_id, { perPage: 30, maxPages: 2 }).catch((syncError) => {
+      console.error("initial strava sync failed", syncError)
+    })
   } catch (e) {
     console.error("strava callback failed", e)
     return NextResponse.redirect(`${baseUrl}/connections?strava=error`)

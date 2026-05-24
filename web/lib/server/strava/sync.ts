@@ -34,6 +34,10 @@ type StravaActivity = {
   kilojoules?: number
 }
 
+function roundInt(value: number | undefined): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? Math.round(value) : null
+}
+
 async function fetchPage(
   token: string,
   page: number,
@@ -47,7 +51,10 @@ async function fetchPage(
     headers: { Authorization: `Bearer ${token}` },
   })
 
-  if (!res.ok) throw new Error(`Strava activities fetch failed: ${res.status}`)
+  if (!res.ok) {
+    const message = await res.text().catch(() => "")
+    throw new Error(`Strava activities fetch failed: ${res.status}${message ? ` ${message}` : ""}`)
+  }
   return res.json()
 }
 
@@ -56,7 +63,10 @@ async function fetchActivity(token: string, activityId: number): Promise<StravaA
     headers: { Authorization: `Bearer ${token}` },
   })
 
-  if (!res.ok) throw new Error(`Strava activity fetch failed: ${res.status}`)
+  if (!res.ok) {
+    const message = await res.text().catch(() => "")
+    throw new Error(`Strava activity fetch failed: ${res.status}${message ? ` ${message}` : ""}`)
+  }
   return res.json()
 }
 
@@ -77,11 +87,11 @@ export function mapActivity(userId: string, activity: StravaActivity) {
     elevation_gain_m: activity.total_elevation_gain ?? 0,
     average_speed: activity.average_speed ?? null,
     max_speed: activity.max_speed ?? null,
-    average_heartrate: activity.average_heartrate ?? null,
-    max_heartrate: activity.max_heartrate ?? null,
-    average_cadence: activity.average_cadence ?? null,
-    average_power: activity.average_watts ?? null,
-    calories: activity.calories ?? activity.kilojoules ?? null,
+    average_heartrate: roundInt(activity.average_heartrate),
+    max_heartrate: roundInt(activity.max_heartrate),
+    average_cadence: roundInt(activity.average_cadence),
+    average_power: roundInt(activity.average_watts),
+    calories: roundInt(activity.calories ?? activity.kilojoules),
     raw_data_json: activity as unknown as Json,
     source: "strava",
   }
@@ -147,6 +157,7 @@ async function doSync(
 ): Promise<StravaSyncResult> {
   let imported = 0
   let skipped = 0
+  let lastError: unknown
   const importedIds: string[] = []
 
   for (let page = 1; page <= maxPages; page++) {
@@ -162,7 +173,9 @@ async function doSync(
         } else {
           skipped += 1
         }
-      } catch {
+      } catch (error) {
+        console.error("strava activity import failed", item.id, error)
+        lastError = error
         skipped += 1
       }
     }
@@ -172,6 +185,11 @@ async function doSync(
 
   await updateLastSyncAt(userId)
   await postProcessImportedActivities(userId, importedIds)
+
+  if (imported === 0 && skipped > 0) {
+    const detail = lastError instanceof Error ? ` (${lastError.message})` : ""
+    throw new Error(`Aucune activité Strava n'a pu être importée${detail}`)
+  }
 
   return { imported, skipped }
 }
