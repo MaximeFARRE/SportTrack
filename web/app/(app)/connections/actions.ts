@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 
-import { importStravaHistory, syncRecentStrava } from "@/lib/server/strava/sync"
+import { importAllStravaHistory, importStravaHistory, syncRecentStrava } from "@/lib/server/strava/sync"
 import { createClient } from "@/lib/supabase/server"
 
 export async function syncStrava(): Promise<{ synced?: number; error?: string }> {
@@ -40,6 +40,24 @@ export async function syncStravaHistory(
     return { synced: imported }
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Import historique échoué" }
+  }
+}
+
+export async function syncAllStravaHistory(): Promise<{ synced?: number; error?: string }> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) return { error: "Non authentifié" }
+
+  try {
+    const { imported } = await importAllStravaHistory(user.id)
+    revalidatePath("/connections")
+    revalidatePath("/dashboard")
+    return { synced: imported }
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Import complet échoué" }
   }
 }
 

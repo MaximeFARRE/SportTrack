@@ -212,6 +212,11 @@ export async function importStravaHistory(
   return doSync(userId, token, 100, 10, after)
 }
 
+export async function importAllStravaHistory(userId: string): Promise<StravaSyncResult> {
+  const token = await ensureValidStravaToken(userId)
+  return doSync(userId, token, 200, 100)
+}
+
 export async function syncSingleStravaActivity(
   userId: string,
   stravaActivityId: number,

@@ -8,7 +8,13 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
-import { disconnectStrava, disconnectTerra, syncStrava, syncStravaHistory } from "./actions"
+import {
+  disconnectStrava,
+  disconnectTerra,
+  syncAllStravaHistory,
+  syncStrava,
+  syncStravaHistory,
+} from "./actions"
 
 interface TerraCardProps {
   connected: boolean
@@ -126,6 +132,7 @@ export function StravaCard({
   const router = useRouter()
   const [syncing, setSyncing] = useState(false)
   const [importing, setImporting] = useState(false)
+  const [importingAll, setImportingAll] = useState(false)
   const [disconnecting, setDisconnecting] = useState(false)
 
   const lastSyncLabel = lastSyncAt
@@ -155,6 +162,18 @@ export function StravaCard({
       toast.error(result.error)
     } else {
       toast.success(`Import terminé — ${result.synced ?? 0} activité(s)`)
+      router.refresh()
+    }
+  }
+
+  async function handleImportAllHistory() {
+    setImportingAll(true)
+    const result = await syncAllStravaHistory()
+    setImportingAll(false)
+    if (result.error) {
+      toast.error(result.error)
+    } else {
+      toast.success(`Import complet terminé — ${result.synced ?? 0} activité(s)`)
       router.refresh()
     }
   }
@@ -216,22 +235,34 @@ export function StravaCard({
             </div>
 
             <div className="flex flex-wrap gap-2 pt-2">
-              <Button size="sm" onClick={handleSync} disabled={syncing || importing || disconnecting}>
+              <Button
+                size="sm"
+                onClick={handleSync}
+                disabled={syncing || importing || importingAll || disconnecting}
+              >
                 {syncing ? "Actualisation…" : "Actualiser les données Strava"}
               </Button>
               <Button
                 size="sm"
                 variant="outline"
                 onClick={handleImportHistory}
-                disabled={syncing || importing || disconnecting}
+                disabled={syncing || importing || importingAll || disconnecting}
               >
                 {importing ? "Import en cours…" : "Récupérer 90 jours d'historique"}
               </Button>
               <Button
                 size="sm"
+                variant="outline"
+                onClick={handleImportAllHistory}
+                disabled={syncing || importing || importingAll || disconnecting}
+              >
+                {importingAll ? "Import complet…" : "Récupérer tout l'historique"}
+              </Button>
+              <Button
+                size="sm"
                 variant="destructive"
                 onClick={handleDisconnect}
-                disabled={syncing || importing || disconnecting}
+                disabled={syncing || importing || importingAll || disconnecting}
               >
                 {disconnecting ? "Déconnexion…" : "Déconnecter"}
               </Button>
