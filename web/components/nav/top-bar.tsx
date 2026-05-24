@@ -2,11 +2,10 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Activity, LogOut, Menu } from "lucide-react"
+import { Activity, Menu } from "lucide-react"
 import { useState } from "react"
 
 import { NAV_ITEMS } from "@/lib/nav"
-import { createClient } from "@/lib/supabase/client"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import {
@@ -17,14 +16,6 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 
 export function TopBar({ email, displayName }: { email: string; displayName: string | null }) {
   const pathname = usePathname()
@@ -34,12 +25,6 @@ export function TopBar({ email, displayName }: { email: string; displayName: str
   const currentItem = NAV_ITEMS.find(
     (item) => pathname === item.href || pathname.startsWith(`${item.href}/`),
   )
-
-  async function signOut() {
-    const supabase = createClient()
-    await supabase.auth.signOut()
-    window.location.href = "/login"
-  }
 
   return (
     <header className="flex h-14 items-center justify-between border-b bg-card px-4">
@@ -88,34 +73,14 @@ export function TopBar({ email, displayName }: { email: string; displayName: str
         <h1 className="text-base font-semibold">{currentItem?.label ?? "SportTrack"}</h1>
       </div>
 
-      <DropdownMenu>
-        <DropdownMenuTrigger
-          render={
-            <Button variant="ghost" className="h-9 gap-2 px-2">
-              <Avatar className="h-7 w-7">
-                <AvatarFallback className="text-xs">{initials}</AvatarFallback>
-              </Avatar>
-              <span className="hidden text-sm sm:inline">{displayName ?? email}</span>
-            </Button>
-          }
-        />
-        <DropdownMenuContent align="end" className="w-56">
-          <DropdownMenuLabel className="font-normal">
-            <div className="flex flex-col">
-              <span className="text-sm font-medium">{displayName ?? "Utilisateur"}</span>
-              <span className="text-xs text-muted-foreground">{email}</span>
-            </div>
-          </DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem render={<Link href="/profile" />}>Profil</DropdownMenuItem>
-          <DropdownMenuItem render={<Link href="/connections" />}>Connexions</DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={signOut} variant="destructive">
-            <LogOut className="mr-2 h-4 w-4" />
-            Se déconnecter
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <Button variant="ghost" className="h-9 gap-2 px-2" asChild>
+        <Link href="/profile">
+          <Avatar className="h-7 w-7">
+            <AvatarFallback className="text-xs">{initials}</AvatarFallback>
+          </Avatar>
+          <span className="hidden text-sm sm:inline">{displayName ?? email}</span>
+        </Link>
+      </Button>
     </header>
   )
 }
