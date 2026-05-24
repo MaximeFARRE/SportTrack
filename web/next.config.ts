@@ -1,9 +1,5 @@
 import type { NextConfig } from "next";
 
-const nextConfig: NextConfig = {
-  outputFileTracingIncludes: {
-    "/*": ["./scripts/garmin_sync.py", "./.python/**/*"],
-  },
-};
+const nextConfig: NextConfig = {};
 
 export default nextConfig;
