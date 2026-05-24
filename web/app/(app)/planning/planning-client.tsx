@@ -838,9 +838,9 @@ export function PlanningClient({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-4">
+      <div className="space-y-6">
         {/* Main Calendar Column */}
-        <div className="lg:col-span-3 space-y-4">
+        <div className="space-y-4">
           {/* ── Desktop: 7-column grid ───────────────────────────────────────────── */}
           <DndContext
             sensors={sensors}
@@ -857,6 +857,9 @@ export function PlanningClient({
                 const dayBlock = initialBlocks.find(
                   (b) => b.start_date <= dayKey && b.end_date >= dayKey
                 )
+                const dayRace = raceGoals.find(
+                  (g) => g.target_date === dayKey
+                )
 
                 return (
                   <div key={dayKey} className="flex flex-col gap-1">
@@ -866,14 +869,23 @@ export function PlanningClient({
                         title={`Bloc : ${dayBlock.name}`}
                       />
                     )}
+                    {dayRace && (
+                      <div
+                        className="rounded bg-rose-500 text-white text-[9px] font-bold py-0.5 px-1 flex items-center justify-center gap-0.5 animate-pulse shrink-0 truncate w-full"
+                        title={`🏁 Événement : ${dayRace.name}`}
+                      >
+                        🏁 {dayRace.name}
+                      </div>
+                    )}
                     {/* Day header */}
                     <div
                       className={cn(
-                        "rounded-md px-1.5 py-1 text-center text-xs font-medium",
-                        isToday ? "bg-primary text-primary-foreground" : "text-muted-foreground",
+                        "rounded-md px-1.5 py-1 text-center text-xs font-medium truncate",
+                        isToday ? "bg-primary text-primary-foreground font-bold" : "text-muted-foreground",
                         dayBlock && !isToday && "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300",
+                        dayRace && !isToday && "border border-rose-300 bg-rose-50 text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-300",
                       )}
-                      title={dayBlock ? `Bloc : ${dayBlock.name}` : undefined}
+                      title={dayRace ? `🏁 Événement : ${dayRace.name}` : dayBlock ? `Bloc : ${dayBlock.name}` : undefined}
                     >
                       {dayLabelCapitalized}
                     </div>
@@ -940,6 +952,9 @@ export function PlanningClient({
               const dayBlock = initialBlocks.find(
                 (b) => b.start_date <= dayKey && b.end_date >= dayKey
               )
+              const dayRace = raceGoals.find(
+                (g) => g.target_date === dayKey
+              )
 
               return (
                 <div
@@ -948,6 +963,7 @@ export function PlanningClient({
                     "rounded-lg border bg-card transition-colors",
                     isToday && "border-primary/50",
                     dayBlock && !isToday && "border-indigo-200 dark:border-indigo-950/60",
+                    dayRace && !isToday && "border-rose-200 dark:border-rose-950/60",
                   )}
                 >
                   {/* Accordion header */}
@@ -969,9 +985,26 @@ export function PlanningClient({
                           title={`Bloc : ${dayBlock.name}`}
                         />
                       )}
-                      <span className={cn("text-sm font-medium", isToday && "text-primary")}>
+                      {dayRace && (
+                        <span
+                          className="text-xs shrink-0"
+                          title={`🏁 Événement : ${dayRace.name}`}
+                        >
+                          🏁
+                        </span>
+                      )}
+                      <span className={cn(
+                        "text-sm font-medium",
+                        isToday && "text-primary",
+                        dayRace && !isToday && "text-rose-600 dark:text-rose-400 font-semibold"
+                      )}>
                         {dayLabelCapitalized}
                       </span>
+                      {dayRace && (
+                        <span className="text-[10px] bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300 rounded px-1.5 py-0.5 font-medium max-w-[120px] truncate">
+                          {dayRace.name}
+                        </span>
+                      )}
                       {totalItems > 0 && (
                         <span className="rounded-full bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
                           {totalItems}
@@ -1022,8 +1055,8 @@ export function PlanningClient({
           </div>
         </div>
 
-        {/* Sidebar Column: Blocks and Goals */}
-        <div className="space-y-4">
+        {/* Components below calendar */}
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           {/* Bloc d'entraînement Card */}
           <Card>
             <CardHeader className="pb-2">

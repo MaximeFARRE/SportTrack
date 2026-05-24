@@ -305,20 +305,23 @@ export default async function DashboardPage() {
         </Card>
       </div>
 
-      {/* Graphique charge 90 jours */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base font-medium">
-            📊 Évolution charge (90 jours)
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="pr-2">
-          <CtlAtlChart data={chartData} />
-        </CardContent>
-      </Card>
+      {/* Graphiques side-by-side on desktop */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        {/* Graphique charge 90 jours */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base font-medium">
+              📊 Évolution charge (90 jours)
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pr-2">
+            <CtlAtlChart data={chartData} />
+          </CardContent>
+        </Card>
 
-      {/* Graphique volume hebdomadaire (6 semaines) */}
-      <WeeklyVolumeChart activities={sixWeeksActivities} />
+        {/* Graphique volume hebdomadaire (6 semaines) */}
+        <WeeklyVolumeChart activities={sixWeeksActivities} />
+      </div>
 
       {/* Activités récentes */}
       <div className="grid gap-4 lg:grid-cols-2">
