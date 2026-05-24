@@ -838,9 +838,9 @@ export function PlanningClient({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-4">
+      <div className="space-y-6">
         {/* Main Calendar Column */}
-        <div className="lg:col-span-3 space-y-4">
+        <div className="space-y-4">
           {/* ── Desktop: 7-column grid ───────────────────────────────────────────── */}
           <DndContext
             sensors={sensors}
@@ -1022,8 +1022,8 @@ export function PlanningClient({
           </div>
         </div>
 
-        {/* Sidebar Column: Blocks and Goals */}
-        <div className="space-y-4">
+        {/* Components below calendar */}
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           {/* Bloc d'entraînement Card */}
           <Card>
             <CardHeader className="pb-2">
