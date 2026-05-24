@@ -56,6 +56,10 @@ def login(email, password, mfa_code):
 
 def main():
     payload = json.load(sys.stdin)
+    print(json.dumps(run(payload)))
+
+
+def run(payload):
     command = payload["command"]
     email = payload["email"]
     password = payload["password"]
@@ -67,8 +71,7 @@ def main():
     if command == "test":
       today = date.today().isoformat()
       stats = client.get_stats(today)
-      print(json.dumps({"ok": True, "provider_user_id": email, "sample_date": today, "has_stats": bool(stats)}))
-      return
+      return {"ok": True, "provider_user_id": email, "sample_date": today, "has_stats": bool(stats)}
 
     if command == "sync":
         metrics = []
@@ -81,8 +84,7 @@ def main():
                 continue
             if stats:
                 metrics.append(metric_from_stats(day, stats))
-        print(json.dumps({"ok": True, "provider_user_id": email, "metrics": metrics}))
-        return
+        return {"ok": True, "provider_user_id": email, "metrics": metrics}
 
     raise ValueError(f"unknown command: {command}")
 
