@@ -77,6 +77,19 @@ Terra credentials are configured in `/settings` and stored in `terra_config`, wi
 environment variables kept as a fallback. Terra data destinations are configured in
 the Terra dashboard; use `/api/terra/webhook` as the webhook destination URL.
 
+### Garmin
+
+```text
+/settings
+  -> Garmin Connect credentials
+  -> python-garminconnect bridge
+  -> provider_connections
+  -> daily_metrics
+```
+
+Garmin Connect uses the unofficial `python-garminconnect` package. It runs from a
+server-side Python script packaged with the Next.js server bundle.
+
 ### Daily Jobs
 
 ```text

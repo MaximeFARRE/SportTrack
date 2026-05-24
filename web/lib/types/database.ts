@@ -142,7 +142,7 @@ export type Database = {
         Row: {
           id: string
           user_id: string
-          provider: "strava" | "terra"
+          provider: "strava" | "terra" | "garmin"
           provider_user_id: string
           access_token: string | null
           refresh_token: string | null
@@ -156,7 +156,7 @@ export type Database = {
         Insert: {
           id?: string
           user_id: string
-          provider: "strava" | "terra"
+          provider: "strava" | "terra" | "garmin"
           provider_user_id: string
           access_token?: string | null
           refresh_token?: string | null
@@ -172,6 +172,24 @@ export type Database = {
           scopes?: string[] | null
           is_active?: boolean
           last_sync_at?: string | null
+        }
+        Relationships: []
+      }
+      garmin_credentials: {
+        Row: {
+          user_id: string
+          email: string
+          password: string
+          updated_at: string
+        }
+        Insert: {
+          user_id: string
+          email: string
+          password: string
+        }
+        Update: {
+          email?: string
+          password?: string
         }
         Relationships: []
       }

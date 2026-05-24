@@ -22,6 +22,61 @@ interface TerraCardProps {
   lastSyncAt?: string | null
 }
 
+export function GarminCard({ connected, providerUserId, lastSyncAt }: TerraCardProps) {
+  const lastSyncLabel = lastSyncAt
+    ? new Intl.DateTimeFormat("fr-FR", {
+        dateStyle: "short",
+        timeStyle: "short",
+      }).format(new Date(lastSyncAt))
+    : "Jamais"
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-sky-600 text-white font-bold text-sm">
+            G
+          </div>
+          <div>
+            <CardTitle className="text-lg">Garmin Connect</CardTitle>
+            <CardDescription>Montres Garmin — sommeil, récupération, FC repos</CardDescription>
+          </div>
+        </div>
+        <Badge variant={connected ? "default" : "secondary"}>
+          {connected ? "Connecté" : "Non connecté"}
+        </Badge>
+      </CardHeader>
+
+      <CardContent className="space-y-4">
+        {connected ? (
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <p className="text-muted-foreground">Compte Garmin</p>
+              <p className="font-medium truncate">{providerUserId ?? "connecté"}</p>
+            </div>
+            <div>
+              <p className="text-muted-foreground">Dernière donnée</p>
+              <p className="font-medium">{lastSyncLabel}</p>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Connectez votre compte Garmin Connect pour importer les données de votre montre.
+            </p>
+            <a
+              href="/settings"
+              className="inline-flex items-center justify-center rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground shadow hover:bg-primary/90"
+            >
+              Connecter Garmin
+            </a>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
 export function TerraCard({ connected, providerUserId, lastSyncAt }: TerraCardProps) {
   const router = useRouter()
   const [disconnecting, setDisconnecting] = useState(false)
@@ -53,7 +108,7 @@ export function TerraCard({ connected, providerUserId, lastSyncAt }: TerraCardPr
             G
           </div>
           <div>
-            <CardTitle className="text-lg">Garmin / Polar / Fitbit</CardTitle>
+            <CardTitle className="text-lg">Polar / Fitbit / autres</CardTitle>
             <CardDescription>Via Terra — HRV, sommeil, récupération</CardDescription>
           </div>
         </div>
@@ -99,7 +154,7 @@ export function TerraCard({ connected, providerUserId, lastSyncAt }: TerraCardPr
               votre score de sommeil et vos données de récupération.
             </p>
             <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-              {["Garmin", "Polar", "Fitbit", "Apple Watch"].map((p) => (
+              {["Polar", "Fitbit", "Apple Watch", "Oura"].map((p) => (
                 <span key={p} className="rounded-full border px-2 py-0.5">{p}</span>
               ))}
             </div>

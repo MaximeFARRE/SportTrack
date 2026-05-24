@@ -3,8 +3,10 @@ import Link from "next/link"
 
 import { StravaConfigForm } from "./strava/strava-config-form"
 import { getStravaConfig } from "./strava/actions"
+import { GarminConfigForm } from "./garmin/garmin-config-form"
 import { TerraConfigForm } from "./terra/terra-config-form"
 import { getTerraConfig } from "./terra/actions"
+import { createClient } from "@/lib/supabase/server"
 
 export const metadata: Metadata = { title: "Paramètres · SportTrack" }
 
@@ -14,10 +16,21 @@ export default async function SettingsPage({
   searchParams: Promise<{ error?: string }>
 }) {
   const { error } = await searchParams
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
   const [stravaConfig, terraConfig] = await Promise.all([
     getStravaConfig(),
     getTerraConfig(),
   ])
+  const { data: garminConn } = await supabase
+    .from("provider_connections")
+    .select("provider_user_id,last_sync_at")
+    .eq("user_id", user!.id)
+    .eq("provider", "garmin")
+    .eq("is_active", true)
+    .maybeSingle()
   const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000").replace(/\/$/, "")
 
   return (
@@ -74,10 +87,16 @@ export default async function SettingsPage({
         <div>
           <h2 className="text-lg font-semibold">Montres connectées</h2>
           <p className="text-sm text-muted-foreground">
-            Terra permet de connecter Garmin, Polar, Fitbit, Coros, Suunto, Wahoo, Withings et
-            Oura via un widget d'authentification.
+            Garmin Connect est utilisé en priorité via une intégration non officielle. Terra reste
+            disponible si un accès API est configuré plus tard.
           </p>
         </div>
+
+        <GarminConfigForm
+          connected={!!garminConn}
+          providerUserId={garminConn?.provider_user_id}
+          lastSyncAt={garminConn?.last_sync_at}
+        />
 
         <TerraConfigForm
           callbackUrl={`${baseUrl}/api/terra/webhook`}

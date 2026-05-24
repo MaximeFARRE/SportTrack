@@ -2,7 +2,7 @@ import type { Metadata } from "next"
 
 import { createClient } from "@/lib/supabase/server"
 
-import { StravaCard, TerraCard } from "./connections-client"
+import { GarminCard, StravaCard, TerraCard } from "./connections-client"
 
 export const metadata: Metadata = { title: "Mes connexions · SportTrack" }
 
@@ -17,7 +17,7 @@ export default async function ConnectionsPage({
     data: { user },
   } = await supabase.auth.getUser()
 
-  const [{ data: stravaConn }, { data: terraConn }, { count: activitiesCount }] =
+  const [{ data: stravaConn }, { data: terraConn }, { data: garminConn }, { count: activitiesCount }] =
     await Promise.all([
       supabase
         .from("provider_connections")
@@ -31,6 +31,13 @@ export default async function ConnectionsPage({
         .select("provider_user_id,last_sync_at,is_active")
         .eq("user_id", user!.id)
         .eq("provider", "terra")
+        .eq("is_active", true)
+        .maybeSingle(),
+      supabase
+        .from("provider_connections")
+        .select("provider_user_id,last_sync_at,is_active")
+        .eq("user_id", user!.id)
+        .eq("provider", "garmin")
         .eq("is_active", true)
         .maybeSingle(),
       supabase
@@ -79,6 +86,12 @@ export default async function ConnectionsPage({
         providerUserId={stravaConn?.provider_user_id}
         lastSyncAt={stravaConn?.last_sync_at}
         activitiesCount={activitiesCount ?? 0}
+      />
+
+      <GarminCard
+        connected={!!garminConn}
+        providerUserId={garminConn?.provider_user_id}
+        lastSyncAt={garminConn?.last_sync_at}
       />
 
       <TerraCard

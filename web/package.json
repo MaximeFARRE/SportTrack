@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "postinstall": "python3 -m pip install --upgrade -r requirements.txt -t .python",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
