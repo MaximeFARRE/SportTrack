@@ -6,7 +6,12 @@ import { StravaCard, TerraCard } from "./connections-client"
 
 export const metadata: Metadata = { title: "Mes connexions · SportTrack" }
 
-export default async function ConnectionsPage() {
+export default async function ConnectionsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ strava?: string; terra?: string }>
+}) {
+  const { strava, terra } = await searchParams
   const supabase = await createClient()
   const {
     data: { user },
@@ -43,6 +48,31 @@ export default async function ConnectionsPage() {
           Connectez vos appareils et plateformes pour importer vos activités automatiquement.
         </p>
       </div>
+
+      {strava === "connected" ? (
+        <div className="rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-900">
+          Strava est connecté. Une première synchronisation vient d'être lancée ; utilisez
+          "Importer 90 jours" si certaines activités anciennes manquent.
+        </div>
+      ) : null}
+
+      {strava === "error" ? (
+        <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
+          La connexion Strava a échoué. Vérifiez la configuration Strava puis réessayez.
+        </div>
+      ) : null}
+
+      {terra === "connected" ? (
+        <div className="rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-900">
+          L'appareil est connecté via Terra. Les données arriveront automatiquement via webhook.
+        </div>
+      ) : null}
+
+      {terra === "error" ? (
+        <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
+          La connexion Terra a échoué. Vérifiez la configuration puis réessayez.
+        </div>
+      ) : null}
 
       <StravaCard
         connected={!!stravaConn}

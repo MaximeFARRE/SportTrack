@@ -84,6 +84,10 @@ describe("syncRecentStrava", () => {
           moving_time: 3500,
           distance: 10000,
           total_elevation_gain: 120,
+          average_heartrate: 143.6,
+          max_heartrate: 174.2,
+          average_cadence: 82.7,
+          average_watts: 211.4,
         },
         {
           id: 222,
@@ -104,6 +108,27 @@ describe("syncRecentStrava", () => {
 
     expect(result).toEqual({ imported: 2, skipped: 0 })
     expect(upsertMock).toHaveBeenCalledTimes(2)
+    expect(upsertMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        average_heartrate: 144,
+        max_heartrate: 174,
+        average_cadence: 83,
+        average_power: 211,
+      }),
+      expect.any(Object),
+    )
     expect(updateMock).toHaveBeenCalledWith(expect.objectContaining({ last_sync_at: expect.any(String) }))
+  })
+
+  it("surfaces import errors when every activity fails", async () => {
+    upsertMock.mockReturnValue({
+      select: () => ({
+        maybeSingle: async () => ({ data: null, error: new Error("bad integer") }),
+      }),
+    })
+
+    await expect(syncRecentStrava("user-1", { perPage: 30, maxPages: 1 })).rejects.toThrow(
+      "Aucune activité Strava",
+    )
   })
 })

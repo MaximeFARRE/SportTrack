@@ -3,6 +3,7 @@ import type { Metadata } from "next"
 import { createClient } from "@/lib/supabase/server"
 import { ExportCard } from "./export-card"
 import { ProfileForm } from "./profile-form"
+import { SignOutButton } from "./sign-out-button"
 
 export const metadata: Metadata = { title: "Mon profil · SportTrack" }
 
@@ -36,6 +37,9 @@ export default async function ProfilePage() {
       </div>
       <ProfileForm profile={profile} zones={zones ?? []} />
       <ExportCard />
+      <div className="flex justify-end">
+        <SignOutButton />
+      </div>
     </div>
   )
 }

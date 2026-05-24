@@ -192,13 +192,21 @@ export function StravaCard({
       <CardContent className="space-y-4">
         {connected ? (
           <>
+            <div className="rounded-md border border-green-200 bg-green-50 p-3 text-sm text-green-950">
+              <p className="font-medium">Compte Strava connecté</p>
+              <p className="mt-1 text-green-900">
+                SportTrack peut récupérer vos activités Strava. Utilisez le bouton
+                d'actualisation pour importer les dernières données.
+              </p>
+            </div>
+
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
                 <p className="text-muted-foreground">Compte Strava</p>
-                <p className="font-medium">#{providerUserId}</p>
+                <p className="font-medium">#{providerUserId ?? "connecté"}</p>
               </div>
               <div>
-                <p className="text-muted-foreground">Dernière synchro</p>
+                <p className="text-muted-foreground">Dernière actualisation</p>
                 <p className="font-medium">{lastSyncLabel}</p>
               </div>
               <div>
@@ -209,7 +217,7 @@ export function StravaCard({
 
             <div className="flex flex-wrap gap-2 pt-2">
               <Button size="sm" onClick={handleSync} disabled={syncing || importing || disconnecting}>
-                {syncing ? "Synchronisation…" : "Synchroniser"}
+                {syncing ? "Actualisation…" : "Actualiser les données Strava"}
               </Button>
               <Button
                 size="sm"
@@ -217,7 +225,7 @@ export function StravaCard({
                 onClick={handleImportHistory}
                 disabled={syncing || importing || disconnecting}
               >
-                {importing ? "Import en cours…" : "Importer 90 jours"}
+                {importing ? "Import en cours…" : "Récupérer 90 jours d'historique"}
               </Button>
               <Button
                 size="sm"
@@ -228,9 +236,22 @@ export function StravaCard({
                 {disconnecting ? "Déconnexion…" : "Déconnecter"}
               </Button>
             </div>
+
+            {activitiesCount === 0 ? (
+              <p className="text-xs text-muted-foreground">
+                Aucune activité importée pour l'instant. Lancez "Importer 90 jours" pour récupérer
+                l'historique récent.
+              </p>
+            ) : null}
           </>
         ) : (
           <div className="space-y-3">
+            <div className="rounded-md border bg-muted/50 p-3 text-sm">
+              <p className="font-medium">Strava n'est pas connecté</p>
+              <p className="mt-1 text-muted-foreground">
+                Connectez votre compte pour activer l'import et l'actualisation des activités.
+              </p>
+            </div>
             <p className="text-sm text-muted-foreground">
               Connectez votre compte Strava pour importer automatiquement vos activités.
             </p>
