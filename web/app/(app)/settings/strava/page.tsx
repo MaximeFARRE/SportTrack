@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import Link from "next/link"
 
 import { StravaConfigForm } from "./strava-config-form"
 import { getStravaConfig } from "./actions"
@@ -13,8 +14,27 @@ export default async function StravaSettingsPage() {
       <div>
         <h1 className="text-2xl font-semibold">Configuration Strava</h1>
         <p className="text-sm text-muted-foreground">
-          Renseignez les identifiants de votre application Strava pour activer la connexion OAuth et les webhooks.
+          Renseignez les identifiants de l'application Strava utilisée par SportTrack.
         </p>
+      </div>
+
+      <div className="rounded-lg border bg-card p-5 text-sm">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1">
+            <h2 className="font-semibold text-base">Connecter un compte Strava</h2>
+            <p className="text-muted-foreground">
+              Une fois la configuration globale enregistrée, chaque utilisateur connecte son
+              propre compte depuis la page Connexions. Cette action ne recrée ni webhook ni
+              identifiants d'application.
+            </p>
+          </div>
+          <Link
+            href="/connections"
+            className="inline-flex shrink-0 items-center justify-center rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground shadow hover:bg-primary/90"
+          >
+            Aller aux connexions
+          </Link>
+        </div>
       </div>
 
       {/* Tutorial */}

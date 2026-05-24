@@ -57,7 +57,7 @@ export function StravaConfigForm({ initialConfig }: Props) {
       {/* Credentials form */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Identifiants Strava</CardTitle>
+          <CardTitle className="text-lg">Identifiants de l'application Strava</CardTitle>
         </CardHeader>
         <CardContent>
           <form ref={formRef} onSubmit={handleSubmit} className="space-y-5">
@@ -83,13 +83,13 @@ export function StravaConfigForm({ initialConfig }: Props) {
                 autoComplete="new-password"
               />
               <p className="text-xs text-muted-foreground">
-                Stocké côté serveur. Le token de vérification du webhook est généré
+                Stocké côté serveur. Le secret de vérification du webhook est généré
                 automatiquement.
               </p>
             </div>
 
             <Button type="submit" disabled={saving}>
-              {saving ? "Enregistrement…" : "Enregistrer"}
+              {saving ? "Enregistrement…" : "Enregistrer la configuration"}
             </Button>
           </form>
         </CardContent>
@@ -102,9 +102,8 @@ export function StravaConfigForm({ initialConfig }: Props) {
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Enregistre le webhook auprès de Strava pour recevoir les nouvelles activités en temps
-            réel. À faire <strong>une seule fois</strong> après avoir enregistré tes identifiants
-            ci-dessus.
+            Active le webhook global de l'application SportTrack auprès de Strava. À faire{" "}
+            <strong>une seule fois</strong>, indépendamment des connexions utilisateur.
           </p>
           <p className="text-xs text-muted-foreground">
             Callback URL enregistrée :{" "}
@@ -124,7 +123,7 @@ export function StravaConfigForm({ initialConfig }: Props) {
             ) : (
               <Webhook className="mr-2 h-4 w-4" />
             )}
-            {webhookOk ? "Webhook actif" : "Enregistrer le webhook"}
+            {webhookOk ? "Webhook actif" : "Activer le webhook global"}
           </Button>
         </CardContent>
       </Card>
