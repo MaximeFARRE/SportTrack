@@ -1,23 +1,8 @@
-# Python cache
-__pycache__/
-*.py[cod]
-
-# Test cache
-.pytest_cache/
-
-# Virtual environments
-.venv/
-venv/
-
 # Local environment files
 .env
 .env.local
 .env.production.local
 .streamlit/secrets.toml
-
-# SQLite artifacts
-*.db
-*.db-journal
 
 # Claude Code local config (machine-specific, never commit)
 .claude/settings.local.json
@@ -27,13 +12,6 @@ venv/
 Thumbs.db
 .idea/
 .vscode/
-
-# pytest temporary files (created at repo root by some pytest versions)
-pytest-cache-files-*
-
-# data directory databases
-data/*.db
-data/*.db-journal
 
 # screenshots (local only, committed manually)
 screenshots/
