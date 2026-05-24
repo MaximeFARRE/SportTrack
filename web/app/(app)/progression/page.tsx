@@ -9,6 +9,8 @@ import { ZoneBars, aggregateZones } from "@/components/activity/zone-bars"
 import type { ZoneEntry } from "@/components/activity/zone-bars"
 import { WeeklyVolume } from "@/components/progression/weekly-volume"
 import { UserPRs } from "@/components/progression/user-prs"
+import { StravaAchievements } from "@/components/progression/strava-achievements"
+import { ensureValidStravaToken } from "@/lib/server/strava/tokens"
 
 export const metadata: Metadata = { title: "Progression · SportTrack" }
 
@@ -38,13 +40,40 @@ export default async function ProgressionPage() {
       .order("start_date"),
     supabase
       .from("activities")
-      .select("id, name, sport_type, start_date, duration_sec, distance_m, elevation_gain_m")
+      .select("id, name, sport_type, start_date, duration_sec, distance_m, elevation_gain_m, raw_data_json")
       .eq("user_id", user.id)
       .in("sport_type", ["Run", "Ride", "Swim"])
   ])
 
   const activities = activitiesRes.data
   const prActivities = prActivitiesRes.data
+
+  let koms: any[] = []
+  let isStravaConnected = false
+
+  try {
+    const token = await ensureValidStravaToken(user.id)
+    isStravaConnected = true
+
+    const { data: conn } = await supabase
+      .from("provider_connections")
+      .select("provider_user_id")
+      .eq("user_id", user.id)
+      .eq("provider", "strava")
+      .eq("is_active", true)
+      .maybeSingle()
+
+    if (conn?.provider_user_id) {
+      const res = await fetch(`https://www.strava.com/api/v3/athletes/${conn.provider_user_id}/koms?per_page=100`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (res.ok) {
+        koms = await res.json()
+      }
+    }
+  } catch (error) {
+    console.warn("Strava token or KOMs retrieval failed:", error)
+  }
 
   // Build weekly buckets
   const weeks: Array<{
@@ -188,7 +217,14 @@ export default async function ProgressionPage() {
       <WeeklyVolume weeks={serializedWeeks} currentWeekLabel={currentWeek.label} />
 
       {/* Records personnels */}
-      <UserPRs activities={prActivities ?? []} />
+      <UserPRs activities={(prActivities as any) ?? []} />
+
+      {/* Trophées Strava */}
+      <StravaAchievements
+        koms={koms}
+        activities={(prActivities as any) ?? []}
+        isStravaConnected={isStravaConnected}
+      />
     </div>
   )
 }
