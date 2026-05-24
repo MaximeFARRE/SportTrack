@@ -6,7 +6,12 @@ import { getStravaConfig } from "./actions"
 
 export const metadata: Metadata = { title: "Configuration Strava · SportTrack" }
 
-export default async function StravaSettingsPage() {
+export default async function StravaSettingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>
+}) {
+  const { error } = await searchParams
   const config = await getStravaConfig()
 
   return (
@@ -18,21 +23,33 @@ export default async function StravaSettingsPage() {
         </p>
       </div>
 
+      {error === "missing_config" ? (
+        <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
+          Enregistrez le Client ID et le Client Secret avant de lancer la connexion Strava.
+        </div>
+      ) : null}
+
+      {error === "missing_state_secret" ? (
+        <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
+          La variable STRAVA_STATE_SECRET doit être configurée côté serveur avant de lancer la
+          connexion Strava.
+        </div>
+      ) : null}
+
       <div className="rounded-lg border bg-card p-5 text-sm">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="space-y-1">
-            <h2 className="font-semibold text-base">Connecter un compte Strava</h2>
+            <h2 className="font-semibold text-base">Tester la connexion Strava</h2>
             <p className="text-muted-foreground">
-              Une fois la configuration globale enregistrée, chaque utilisateur connecte son
-              propre compte depuis la page Connexions. Cette action ne recrée ni webhook ni
-              identifiants d'application.
+              Lance le vrai flux OAuth Strava pour connecter votre compte utilisateur. Cette
+              action ne recrée ni webhook ni identifiants d'application.
             </p>
           </div>
           <Link
-            href="/connections"
+            href="/connections/strava/connect"
             className="inline-flex shrink-0 items-center justify-center rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground shadow hover:bg-primary/90"
           >
-            Aller aux connexions
+            Connecter Strava
           </Link>
         </div>
       </div>
