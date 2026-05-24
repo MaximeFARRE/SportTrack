@@ -256,7 +256,7 @@ export function StravaCard({
               Connectez votre compte Strava pour importer automatiquement vos activités.
             </p>
             <a
-              href="/connections/strava/connect"
+              href="/settings/strava"
               className="inline-flex items-center justify-center rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground shadow hover:bg-primary/90"
             >
               Connecter Strava
