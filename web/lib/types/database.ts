@@ -490,6 +490,27 @@ export type Database = {
         }
         Relationships: []
       }
+      terra_config: {
+        Row: {
+          id: 1
+          dev_id: string
+          api_key: string
+          webhook_secret: string
+          updated_at: string
+        }
+        Insert: {
+          id?: 1
+          dev_id?: string
+          api_key?: string
+          webhook_secret?: string
+        }
+        Update: {
+          dev_id?: string
+          api_key?: string
+          webhook_secret?: string
+        }
+        Relationships: []
+      }
     }
     Views: Record<string, never>
     Functions: Record<string, never>

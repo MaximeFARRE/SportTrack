@@ -104,7 +104,7 @@ export function TerraCard({ connected, providerUserId, lastSyncAt }: TerraCardPr
               ))}
             </div>
             <a
-              href="/connections/terra/connect"
+              href="/settings"
               className="inline-flex items-center justify-center rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground shadow hover:bg-primary/90"
             >
               Connecter mon appareil
@@ -287,7 +287,7 @@ export function StravaCard({
               Connectez votre compte Strava pour importer automatiquement vos activités.
             </p>
             <a
-              href="/settings/strava"
+              href="/settings"
               className="inline-flex items-center justify-center rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground shadow hover:bg-primary/90"
             >
               Connecter Strava

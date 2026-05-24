@@ -73,6 +73,10 @@ All user-owned rows use `user_id = auth.users.id`. RLS policies enforce user iso
   -> daily_metrics
 ```
 
+Terra credentials are configured in `/settings` and stored in `terra_config`, with
+environment variables kept as a fallback. Terra data destinations are configured in
+the Terra dashboard; use `/api/terra/webhook` as the webhook destination URL.
+
 ### Daily Jobs
 
 ```text
