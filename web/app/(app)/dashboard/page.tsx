@@ -7,6 +7,7 @@ import { Activity, Moon, TrendingUp, Zap } from "lucide-react"
 
 import { createClient } from "@/lib/supabase/server"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 import { CtlAtlChart } from "@/components/dashboard/ctl-atl-chart"
 import { WeeklyVolumeChart } from "@/components/dashboard/weekly-volume-chart"
 import { ZoneBars, aggregateZones } from "@/components/activity/zone-bars"
@@ -54,7 +55,7 @@ export default async function DashboardPage() {
 
   const today = now.toISOString().slice(0, 10)
 
-  const [profileResult, athleteResult, weekActivitiesResult, recentMetricsResult, riskResult, sixWeeksActivitiesResult] =
+  const [profileResult, athleteResult, weekActivitiesResult, recentMetricsResult, riskResult, sixWeeksActivitiesResult, trainingBlocksResult] =
     await Promise.all([
       supabase.from("profiles").select("display_name").eq("id", user.id).maybeSingle(),
       supabase.from("athlete_profiles").select("primary_sport, weekly_target_hours").eq("user_id", user.id).maybeSingle(),
@@ -82,6 +83,11 @@ export default async function DashboardPage() {
         .eq("user_id", user.id)
         .gte("start_date", sixWeeksAgo.toISOString())
         .order("start_date", { ascending: false }),
+      (supabase as any)
+        .from("training_blocks")
+        .select("name, start_date, end_date")
+        .eq("user_id", user.id)
+        .order("start_date"),
     ])
 
   if (!athleteResult.data) redirect("/onboarding")
@@ -92,6 +98,8 @@ export default async function DashboardPage() {
   const recentMetrics = recentMetricsResult.data ?? []
   const latestMetric = recentMetrics.at(-1)
   const sixWeeksActivities = sixWeeksActivitiesResult.data ?? []
+  const blocks = trainingBlocksResult.data ?? []
+  const activeBlock = blocks.find((b: any) => b.start_date <= today && today <= b.end_date)
 
   // Risk score: use today's risk_assessments row if available, else derive from training_readiness
   const riskData = riskResult.data
@@ -125,7 +133,18 @@ export default async function DashboardPage() {
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">Bonjour {firstName} 👋</h1>
+          <h1 className="text-2xl font-semibold flex items-center gap-2">
+            Bonjour {firstName} 👋
+            {activeBlock && (
+              <Badge variant="outline" className="text-xs ml-2 bg-indigo-50/50 text-indigo-600 dark:bg-indigo-950/30 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800/50 font-medium py-0.5 px-2 flex items-center gap-1.5 animate-fade-in">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
+                </span>
+                Bloc : {activeBlock.name}
+              </Badge>
+            )}
+          </h1>
           <p className="text-sm text-muted-foreground">{formattedDateCapitalized}</p>
         </div>
       </div>
