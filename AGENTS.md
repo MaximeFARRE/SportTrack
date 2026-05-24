@@ -84,7 +84,7 @@ Before marking a task complete:
 
 - [ ] `npm test` passes in `web/`
 - [ ] `npm run build` passes in `web/`
-- [ ] No `fetch(${FASTAPI_URL}/...)` calls anywhere
+- [ ] No internal calls to the removed Python backend remain
 - [ ] No untracked files accidentally left behind
 - [ ] Diff reviewed — no unrelated changes included
 - [ ] If behavior or setup changed: README or relevant doc updated

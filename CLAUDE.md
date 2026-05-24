@@ -8,7 +8,7 @@ Read AGENTS.md first. This file adds Claude-specific behavioral rules on top of 
 
 - `AGENTS.md`: always read.
 - `FUNCTIONAL_AUDIT.md`, `MIGRATION_PLAN.md`: read on demand only.
-- `PIVOT_PLAN.md`: read only the current phase section. Never load the full file.
+- Archived reference docs under `docs/archive/`: read only when historical context is explicitly needed.
 
 ---
 
