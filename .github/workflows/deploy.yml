@@ -1,7 +1,6 @@
 name: Deploy
 
-# Vercel (frontend + Python API) is handled automatically by Vercel's GitHub
-# integration on every push to main — no CI step needed.
+# Vercel handles the Next.js app through its GitHub integration.
 # This workflow only manages Supabase migrations.
 
 on:
