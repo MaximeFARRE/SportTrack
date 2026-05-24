@@ -180,16 +180,19 @@ export type Database = {
           user_id: string
           email: string
           password: string
+          token_data: Json | null
           updated_at: string
         }
         Insert: {
           user_id: string
           email: string
           password: string
+          token_data?: Json | null
         }
         Update: {
           email?: string
           password?: string
+          token_data?: Json | null
         }
         Relationships: []
       }

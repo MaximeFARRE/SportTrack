@@ -2,6 +2,7 @@ import { spawn } from "child_process"
 import path from "path"
 
 import { createServiceClient } from "@/lib/supabase/service"
+import type { Json } from "@/lib/types/database"
 
 type GarminMetric = {
   metric_date: string
@@ -17,6 +18,7 @@ type GarminScriptResult = {
   error?: string
   provider_user_id?: string
   metrics?: GarminMetric[]
+  token_data?: Json
 }
 
 function getDeploymentBaseUrl(): string | null {
@@ -79,11 +81,15 @@ function runGarminScript(payload: Record<string, unknown>): Promise<GarminScript
   })
 }
 
-async function getCredentials(userId: string): Promise<{ email: string; password: string }> {
+async function getCredentials(userId: string): Promise<{
+  email: string
+  password: string
+  token_data: Json | null
+}> {
   const supabase = createServiceClient()
   const { data, error } = await supabase
     .from("garmin_credentials")
-    .select("email, password")
+    .select("email, password, token_data")
     .eq("user_id", userId)
     .maybeSingle()
 
@@ -92,6 +98,18 @@ async function getCredentials(userId: string): Promise<{ email: string; password
   }
 
   return data
+}
+
+async function updateTokenData(userId: string, tokenData: Json | undefined): Promise<void> {
+  if (!tokenData) return
+
+  const supabase = createServiceClient()
+  const { error } = await supabase
+    .from("garmin_credentials")
+    .update({ token_data: tokenData })
+    .eq("user_id", userId)
+
+  if (error) throw error
 }
 
 export async function testGarminConnection(
@@ -110,7 +128,15 @@ export async function testGarminConnection(
   const [{ error: credentialError }, { error: connectionError }] = await Promise.all([
     supabase
       .from("garmin_credentials")
-      .upsert({ user_id: userId, email: opts.email, password: opts.password }, { onConflict: "user_id" }),
+      .upsert(
+        {
+          user_id: userId,
+          email: opts.email,
+          password: opts.password,
+          token_data: result.token_data,
+        },
+        { onConflict: "user_id" },
+      ),
     supabase.from("provider_connections").upsert(
       {
         user_id: userId,
@@ -133,6 +159,7 @@ export async function syncGarminMetrics(userId: string, days = 30): Promise<numb
     command: "sync",
     email: credentials.email,
     password: credentials.password,
+    token_data: credentials.token_data,
     days,
   })
 
@@ -150,6 +177,8 @@ export async function syncGarminMetrics(userId: string, days = 30): Promise<numb
     }))
 
   const supabase = createServiceClient()
+  await updateTokenData(userId, result.token_data)
+
   if (rows.length > 0) {
     const { error } = await supabase
       .from("daily_metrics")

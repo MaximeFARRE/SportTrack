@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import os
 import json
 import sys
 import tempfile
@@ -42,7 +43,27 @@ def metric_from_stats(day, stats):
     }
 
 
-def login(email, password, mfa_code):
+def write_tokens(tokenstore, token_data):
+    if not token_data:
+        return
+    for filename in ("oauth1_token.json", "oauth2_token.json"):
+        value = token_data.get(filename)
+        if value:
+            with open(os.path.join(tokenstore, filename), "w") as f:
+                json.dump(value, f)
+
+
+def read_tokens(tokenstore):
+    token_data = {}
+    for filename in ("oauth1_token.json", "oauth2_token.json"):
+        path = os.path.join(tokenstore, filename)
+        if os.path.exists(path):
+            with open(path) as f:
+                token_data[filename] = json.load(f)
+    return token_data or None
+
+
+def login(email, password, mfa_code, token_data=None):
     kwargs = {}
     signature = inspect.signature(Garmin)
     if mfa_code and "prompt_mfa" in signature.parameters:
@@ -50,8 +71,9 @@ def login(email, password, mfa_code):
 
     client = Garmin(email, password, **kwargs)
     with tempfile.TemporaryDirectory() as tokenstore:
+        write_tokens(tokenstore, token_data)
         client.login(tokenstore)
-        return client
+        return client, read_tokens(tokenstore)
 
 
 def main():
@@ -64,14 +86,21 @@ def run(payload):
     email = payload["email"]
     password = payload["password"]
     mfa_code = payload.get("mfa_code") or ""
+    token_data = payload.get("token_data")
     days = int(payload.get("days") or 30)
 
-    client = login(email, password, mfa_code)
+    client, token_data = login(email, password, mfa_code, token_data)
 
     if command == "test":
       today = date.today().isoformat()
       stats = client.get_stats(today)
-      return {"ok": True, "provider_user_id": email, "sample_date": today, "has_stats": bool(stats)}
+      return {
+          "ok": True,
+          "provider_user_id": email,
+          "sample_date": today,
+          "has_stats": bool(stats),
+          "token_data": token_data,
+      }
 
     if command == "sync":
         metrics = []
@@ -84,7 +113,7 @@ def run(payload):
                 continue
             if stats:
                 metrics.append(metric_from_stats(day, stats))
-        return {"ok": True, "provider_user_id": email, "metrics": metrics}
+        return {"ok": True, "provider_user_id": email, "metrics": metrics, "token_data": token_data}
 
     raise ValueError(f"unknown command: {command}")
 
