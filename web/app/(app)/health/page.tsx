@@ -209,7 +209,7 @@ export default async function HealthPage() {
       {/* Main recovery metrics grid */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {/* Sommeil */}
-        <Card className="relative overflow-hidden border border-border bg-card/50 backdrop-blur-sm transition-all hover:bg-card">
+        <Card className="relative border border-border bg-card/50 backdrop-blur-sm transition-all hover:bg-card">
           <CardContent className="pt-4 flex flex-col justify-between h-full min-h-[110px]">
             <div className="flex items-center justify-between text-sm text-muted-foreground">
               <span className="flex items-center gap-1.5 font-medium">
@@ -231,7 +231,7 @@ export default async function HealthPage() {
         </Card>
 
         {/* HRV */}
-        <Card className="relative overflow-hidden border border-border bg-card/50 backdrop-blur-sm transition-all hover:bg-card">
+        <Card className="relative border border-border bg-card/50 backdrop-blur-sm transition-all hover:bg-card">
           <CardContent className="pt-4 flex flex-col justify-between h-full min-h-[110px]">
             <div className="flex items-center justify-between text-sm text-muted-foreground">
               <span className="flex items-center gap-1.5 font-medium">
@@ -259,7 +259,7 @@ export default async function HealthPage() {
         </Card>
 
         {/* FC de repos */}
-        <Card className="relative overflow-hidden border border-border bg-card/50 backdrop-blur-sm transition-all hover:bg-card">
+        <Card className="relative border border-border bg-card/50 backdrop-blur-sm transition-all hover:bg-card">
           <CardContent className="pt-4 flex flex-col justify-between h-full min-h-[110px]">
             <div className="flex items-center justify-between text-sm text-muted-foreground">
               <span className="flex items-center gap-1.5 font-medium">
@@ -281,7 +281,7 @@ export default async function HealthPage() {
         </Card>
 
         {/* Body Battery & Stress */}
-        <Card className="relative overflow-hidden border border-border bg-card/50 backdrop-blur-sm transition-all hover:bg-card">
+        <Card className="relative border border-border bg-card/50 backdrop-blur-sm transition-all hover:bg-card">
           <CardContent className="pt-4 flex flex-col justify-between h-full min-h-[110px]">
             <div className="flex items-center justify-between text-sm text-muted-foreground">
               <span className="flex items-center gap-1.5 font-medium">
