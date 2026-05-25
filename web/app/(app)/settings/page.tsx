@@ -21,10 +21,27 @@ export default async function SettingsPage({
   const {
     data: { user },
   } = await supabase.auth.getUser()
-  const [stravaConfig, terraConfig] = await Promise.all([
-    getStravaConfig(),
-    getTerraConfig(),
-  ])
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("is_admin")
+    .eq("id", user!.id)
+    .maybeSingle()
+
+  const isAdmin = !!profile?.is_admin
+
+  let stravaConfig = { client_id: "", client_secret: "" }
+  let terraConfig = { dev_id: "", api_key: "", webhook_secret: "" }
+
+  if (isAdmin) {
+    const [sc, tc] = await Promise.all([
+      getStravaConfig(),
+      getTerraConfig(),
+    ])
+    stravaConfig = sc
+    terraConfig = tc
+  }
+
   const { data: garminConn } = await supabase
     .from("provider_connections")
     .select("provider_user_id,last_sync_at")
@@ -39,57 +56,75 @@ export default async function SettingsPage({
       <div>
         <h1 className="text-2xl font-semibold">Paramètres</h1>
         <p className="text-sm text-muted-foreground">
-          Configurez les intégrations utilisées par SportTrack.
+          Configurez vos intégrations et options SportTrack.
         </p>
       </div>
 
-      {error === "missing_config" ? (
-        <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
-          Enregistrez le Client ID et le Client Secret avant de lancer la connexion Strava.
-        </div>
-      ) : null}
+      {isAdmin && (
+        <>
+          {error === "missing_config" ? (
+            <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
+              Enregistrez le Client ID et le Client Secret avant de lancer la connexion Strava.
+            </div>
+          ) : null}
 
-      {error === "missing_state_secret" ? (
-        <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
-          La variable STRAVA_STATE_SECRET ou INTERNAL_SECRET doit être configurée côté serveur
-          avant de lancer la connexion Strava.
-        </div>
-      ) : null}
+          {error === "missing_state_secret" ? (
+            <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
+              La variable STRAVA_STATE_SECRET ou INTERNAL_SECRET doit être configurée côté serveur
+              avant de lancer la connexion Strava.
+            </div>
+          ) : null}
 
-      {error === "terra_config" ? (
-        <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
-          Enregistrez le Dev ID et l'API Key Terra avant de connecter une montre.
-        </div>
-      ) : null}
+          {error === "terra_config" ? (
+            <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
+              Enregistrez le Dev ID et l'API Key Terra avant de connecter une montre.
+            </div>
+          ) : null}
 
-      <section className="space-y-4">
-        <div className="rounded-lg border bg-card p-5 text-sm">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="space-y-1">
-              <h2 className="font-semibold text-base">Connexion Strava</h2>
-              <p className="text-muted-foreground">
-                Lance le flux OAuth Strava pour connecter votre compte utilisateur. Cette action ne
-                recrée ni webhook ni identifiants d'application.
+          <section className="space-y-4">
+            <div className="rounded-lg border bg-card p-5 text-sm">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="space-y-1">
+                  <h2 className="font-semibold text-base">Connexion Strava (Développeur)</h2>
+                  <p className="text-muted-foreground">
+                    Lance le flux OAuth Strava pour connecter votre compte utilisateur. Cette action ne
+                    recrée ni webhook ni identifiants d'application.
+                  </p>
+                </div>
+                <Link
+                  href="/connections/strava/connect"
+                  className="inline-flex shrink-0 items-center justify-center rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground shadow hover:bg-primary/90"
+                >
+                  Connecter Strava
+                </Link>
+              </div>
+            </div>
+
+            <StravaConfigForm initialConfig={stravaConfig} />
+          </section>
+
+          <section className="space-y-4">
+            <div>
+              <h2 className="text-lg font-semibold">Clés API Terra</h2>
+              <p className="text-sm text-muted-foreground">
+                Configurez l'intégration d'API Terra pour Polar / Fitbit et autres appareils.
               </p>
             </div>
-            <Link
-              href="/connections/strava/connect"
-              className="inline-flex shrink-0 items-center justify-center rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground shadow hover:bg-primary/90"
-            >
-              Connecter Strava
-            </Link>
-          </div>
-        </div>
 
-        <StravaConfigForm initialConfig={stravaConfig} />
-      </section>
+            <TerraConfigForm
+              callbackUrl={`${baseUrl}/api/terra/webhook`}
+              initialConfig={terraConfig}
+            />
+          </section>
+        </>
+      )}
 
+      {/* Garmin Connect connection card (accessible to all authenticated users) */}
       <section className="space-y-4">
         <div>
-          <h2 className="text-lg font-semibold">Montres connectées</h2>
+          <h2 className="text-lg font-semibold">Montre Garmin</h2>
           <p className="text-sm text-muted-foreground">
-            Garmin Connect est utilisé en priorité via une intégration non officielle. Terra reste
-            disponible si un accès API est configuré plus tard.
+            Saisissez vos identifiants Garmin Connect pour synchroniser vos métriques (sommeil, récupération, FC repos).
           </p>
         </div>
 
@@ -98,13 +133,9 @@ export default async function SettingsPage({
           providerUserId={garminConn?.provider_user_id}
           lastSyncAt={garminConn?.last_sync_at}
         />
-
-        <TerraConfigForm
-          callbackUrl={`${baseUrl}/api/terra/webhook`}
-          initialConfig={terraConfig}
-        />
       </section>
 
+      {/* General feedback form (accessible to all authenticated users) */}
       <section className="space-y-4">
         <FeedbackForm />
       </section>
