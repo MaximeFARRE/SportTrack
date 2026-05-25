@@ -9,8 +9,10 @@
 5. [Activités](#activités)
 6. [Zones d'intensité](#zones-dintensité)
 7. [Suivi des blessures](#suivi-des-blessures)
-8. [Export pour coach IA](#export-pour-coach-ia)
-9. [FAQ](#faq)
+8. [Périodisation et Objectifs](#périodisation-et-objectifs)
+9. [Groupes et Coaching](#groupes-et-coaching)
+10. [Export pour coach IA](#export-pour-coach-ia)
+11. [FAQ](#faq)
 
 ---
 
@@ -117,6 +119,52 @@ Un entraînement polarisé (80 % bas / 20 % haut) est recommandé pour les sport
 ### Suggestions automatiques
 
 Si vous avez noté des douleurs répétées sur une même zone dans vos ressentis d'activités (≥ 3 occurrences), SportTrack affiche une suggestion de créer une blessure correspondante.
+
+---
+
+## Périodisation et Objectifs
+
+SportTrack intègre des outils de périodisation pour organiser votre saison et des objectifs chiffrés pour mesurer votre assiduité.
+
+### Blocs d'entraînement (Périodisation)
+1. Accédez à la page **Planification**.
+2. Créez un nouveau **Bloc d'entraînement** (ex : *"Foncier 1"*, *"Spécifique Semi"*) en renseignant un nom et des dates de début et de fin.
+3. Les blocs d'entraînement s'affichent en surbrillance sur votre calendrier pour structurer visuellement votre saison en cycles.
+
+### Objectifs d'entraînement (Goals)
+Vous pouvez fixer trois types d'objectifs pour garder le cap :
+- **Volume hebdomadaire** : Un nombre d'heures d'entraînement cible par semaine (ex : 8 heures/semaine).
+- **Séances hebdomadaires** : Un nombre cible de séances par semaine (ex : 4 séances/semaine).
+- **Course (Race)** : Un objectif de compétition à une date précise avec une valeur cible (ex : *"Marathon de Valence"* le 6 décembre, objectif de distance de 42.195 km, ou temps cible).
+
+---
+
+## Groupes et Coaching
+
+SportTrack permet d'intégrer des dynamiques de groupe et de coaching. Les athlètes peuvent partager leurs données d'entraînement avec d'autres membres et être encadrés par un ou plusieurs coachs.
+
+### Créer un groupe
+1. Accédez à l'onglet **Groupes** ou **Coaching**.
+2. Cliquez sur **Créer un groupe**.
+3. Renseignez le nom du groupe, la description, et les détails de l'événement cible (nom de la course, date, distance en kilomètres).
+4. Le groupe est créé et un **code d'invitation unique** est généré automatiquement (ex : `JOIN-ABC123`).
+
+### Rejoindre un groupe
+- **Comme athlète** : Entrez le code d'invitation fourni par votre coach ou administrateur de groupe pour rejoindre. Renseignez en option votre objectif chronométrique cible pour l'événement.
+- **Comme coach** : L'administrateur du groupe peut vous attribuer le rôle de `Coach` ou `Admin` dans la gestion des membres du groupe.
+
+### Fonctionnement de la planification collective
+Lorsqu'un coach planifie une séance d'entraînement ou un bloc d'entraînement au niveau du groupe :
+1. La séance collective est **automatiquement propagée** dans le calendrier personnel de tous les athlètes membres du groupe.
+2. Si le coach modifie la séance collective, les modifications sont **automatiquement synchronisées** sur les calendriers individuels (tant que les athlètes n'ont pas encore complété la séance).
+3. L'athlète peut réaliser la séance, et l'activité réelle importée (ex : Strava) sera automatiquement associée à la séance planifiée correspondante.
+
+### Le tableau de bord du Coach (Coach Dashboard)
+En tant que coach d'un groupe, vous disposez d'un écran dédié pour piloter la préparation de vos athlètes :
+- **Suivi physiologique** : Visualisation des métriques quotidiennes des athlètes (`daily_metrics` comme la HRV, le sommeil et le stress).
+- **Historique réel** : Consultation des activités récentes effectuées par chaque athlète.
+- **Alertes et blessures** : Notifications en temps réel si un athlète déclare une blessure ou présente des signes de fatigue accumulée.
+- **Planification individuelle** : Possibilité pour le coach de créer, modifier ou supprimer des séances d'entraînement planifiées directement sur le calendrier personnel de l'athlète pour personnaliser son programme.
 
 ---
 

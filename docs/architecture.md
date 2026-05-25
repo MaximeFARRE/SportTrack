@@ -31,6 +31,16 @@ Supabase
 | Server Components / Server Actions | `web/lib/supabase/server.ts` | User session, RLS enforced |
 | Webhooks and crons | `web/lib/supabase/service.ts` | Service role, server-only |
 
+### Row Level Security (RLS) & Multi-User Sharing
+
+Postgres Row Level Security (RLS) is enabled on all tables holding user data to guarantee isolation and manage structured sharing:
+
+- **Standard Isolation**: Normal user data (activities, heart-rate zones, metrics, injuries) is strictly isolated using the user's authenticated ID (`auth.uid() = user_id`).
+- **Group Sharing**: Athletes in the same group share visibility of their profiles and historical activities. This is resolved via the `shares_group(user_id_1, user_id_2)` security helper.
+- **Coaching Permissions**: Users holding a `coach` or `admin` role in a group share have read/write access to their athletes' planned sessions and training blocks, and read access to their goals, metrics, and active injuries. This is resolved via the `is_coach_of_athlete(coach_id, athlete_id)` security helper.
+
+---
+
 ## Core Tables
 
 | Table | Purpose |
@@ -44,8 +54,28 @@ Supabase
 | `risk_assessments` | Daily overtraining risk snapshots |
 | `injuries` | Injury tracking and active pain zones |
 | `planned_sessions` | Planned training sessions |
+| `training_blocks` | Periodization blocks of training sessions |
+| `training_goals` | User training goals (volume, workouts, race) |
+| `groups` | Training groups sharing event targets and schedules |
+| `group_members` | Group membership with roles (admin, coach, athlete) |
+| `group_planned_sessions` | Shared training sessions planned at group level |
+| `group_training_blocks` | Shared training blocks planned at group level |
 
-All user-owned rows use `user_id = auth.users.id`. RLS policies enforce user isolation for normal app traffic.
+All user-owned rows use `user_id = auth.users.id`.
+
+---
+
+## Database Triggers & Automations
+
+Postgres database triggers run with `SECURITY DEFINER` privileges to handle automated workflows safely:
+
+- **Profile Auto-Creation**: Triggered `AFTER INSERT ON auth.users` (`handle_new_user`) to automatically insert a user profile row upon signup.
+- **Planned Session Matching**: Triggered `AFTER INSERT ON public.activities` (`match_planned_to_actual`) to check if a completed session matches a planned session of the same day and sport, update its status to `'completed'`, and compute the completion score.
+- **Group Session Propagation**: Triggered `AFTER INSERT ON public.group_planned_sessions` (`propagate_group_session`) to duplicate and propagate a group session to each athlete's calendar.
+- **Group Session Sync**: Triggered `AFTER UPDATE ON public.group_planned_sessions` (`sync_group_session_updates`) to update all matching athlete sessions that are still pending.
+- **Group Block Propagation & Sync**: Triggered on `group_training_blocks` to dispatch and update training blocks for all group athletes automatically.
+
+---
 
 ## Data Flows
 
@@ -73,9 +103,7 @@ All user-owned rows use `user_id = auth.users.id`. RLS policies enforce user iso
   -> daily_metrics
 ```
 
-Terra credentials are configured in `/settings` and stored in `terra_config`, with
-environment variables kept as a fallback. Terra data destinations are configured in
-the Terra dashboard; use `/api/terra/webhook` as the webhook destination URL.
+Terra credentials are configured in `/settings` and stored in `terra_config`, with environment variables kept as a fallback. Terra data destinations are configured in the Terra dashboard; use `/api/terra/webhook` as the webhook destination URL.
 
 ### Garmin
 
@@ -87,8 +115,7 @@ the Terra dashboard; use `/api/terra/webhook` as the webhook destination URL.
   -> daily_metrics
 ```
 
-Garmin Connect uses the unofficial `python-garminconnect` package. It runs from a
-server-side Python script packaged with the Next.js server bundle.
+Garmin Connect uses the unofficial `python-garminconnect` package. It runs from a server-side Python script packaged with the Next.js server bundle.
 
 ### Daily Jobs
 
@@ -110,6 +137,8 @@ Profile export action
   -> athlete profile, metrics, activities, injuries, plan
   -> JSON or Markdown
 ```
+
+---
 
 ## Security
 
