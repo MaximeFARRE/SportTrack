@@ -6,6 +6,7 @@ import { getStravaConfig } from "./strava/actions"
 import { GarminConfigForm } from "./garmin/garmin-config-form"
 import { TerraConfigForm } from "./terra/terra-config-form"
 import { getTerraConfig } from "./terra/actions"
+import { FeedbackForm } from "./feedback-form"
 import { createClient } from "@/lib/supabase/server"
 
 export const metadata: Metadata = { title: "Paramètres · SportTrack" }
@@ -102,6 +103,10 @@ export default async function SettingsPage({
           callbackUrl={`${baseUrl}/api/terra/webhook`}
           initialConfig={terraConfig}
         />
+      </section>
+
+      <section className="space-y-4">
+        <FeedbackForm />
       </section>
     </div>
   )

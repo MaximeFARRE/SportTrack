@@ -532,6 +532,30 @@ export type Database = {
         }
         Relationships: []
       }
+      app_feedback: {
+        Row: {
+          id: string
+          user_id: string
+          feedback_type: "bug" | "feature" | "other"
+          message: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          feedback_type: "bug" | "feature" | "other"
+          message: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          feedback_type?: "bug" | "feature" | "other"
+          message?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: Record<string, never>
     Functions: Record<string, never>
