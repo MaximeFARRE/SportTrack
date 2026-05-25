@@ -12,17 +12,40 @@ SportTrack est une plateforme web moderne et multi-utilisateur conçue pour le s
 
 ## Sommaire
 
-1. [Fonctionnalités Clés](#1-fonctionnalités-clés)
-2. [Architecture & Choix Techniques](#2-architecture--choix-techniques)
-3. [Structure du Repository](#3-structure-du-repository)
-4. [Installation & Configuration Locale](#4-installation--configuration-locale)
-5. [Guide d'Utilisation](#5-guide-dutilisation)
-6. [Déploiement en Production](#6-déploiement-en-production)
-7. [Workflow de Contribution & Tests](#7-workflow-de-contribution--tests)
+1. [Aperçu de l'Application](#1-aperçu-de-lapplication)
+2. [Fonctionnalités Clés](#2-fonctionnalités-clés)
+3. [Architecture & Choix Techniques](#3-architecture--choix-techniques)
+4. [Structure du Repository](#4-structure-du-repository)
+5. [Installation & Configuration Locale](#5-installation--configuration-locale)
+6. [Guide d'Utilisation](#6-guide-dutilisation)
+7. [Déploiement en Production](#7-déploiement-en-production)
+8. [Workflow de Contribution & Tests](#8-workflow-de-contribution--tests)
 
 ---
 
-## 1. Fonctionnalités Clés
+## 1. Aperçu de l'Application
+
+### Page d'accueil
+![Page d'accueil SportTrack](docs/images/home.jpg)
+
+### Tableau de bord
+![Tableau de bord SportTrack](docs/images/dashboard.jpg)
+
+### Calendrier d'entraînement
+![Calendrier SportTrack](docs/images/calendar.jpg)
+
+### Activités
+![Liste des activités SportTrack](docs/images/activities.jpg)
+
+### Planning
+![Planning SportTrack](docs/images/planning.jpg)
+
+### Progression
+![Progression SportTrack](docs/images/progression.jpg)
+
+---
+
+## 2. Fonctionnalités Clés
 
 * **Synchronisation Wearables & Activités** : Connexion native à Strava via OAuth 2.0 pour l'import des activités historiques et récentes. Intégration de Garmin Connect et d'autres capteurs (Polar, Fitbit, Suunto) via l'API Terra.
 * **Calcul Physiologique de la Forme** : Évaluation automatique de la fatigue (ATL - Acute Training Load), de la condition physique générale (CTL - Chronic Training Load) et de l'état de fraîcheur (TSB - Training Stress Balance).
@@ -34,7 +57,7 @@ SportTrack est une plateforme web moderne et multi-utilisateur conçue pour le s
 
 ---
 
-## 2. Architecture & Choix Techniques
+## 3. Architecture & Choix Techniques
 
 ### Stack Technique
 - **Frontend & Backend** : **Next.js 16 (App Router)** et React 19. Utilisation intensive des Server Actions pour l'accès aux données sécurisées et des Route Handlers pour les webhooks et endpoints cron.
@@ -51,7 +74,7 @@ Dans une version précédente, SportTrack s'appuyait sur un serveur auxiliaire F
 
 ---
 
-## 3. Structure du Repository
+## 4. Structure du Repository
 
 ```text
 SportTrack/
@@ -74,7 +97,7 @@ SportTrack/
 
 ---
 
-## 4. Installation & Configuration Locale
+## 5. Installation & Configuration Locale
 
 ### Pré-requis
 * **Node.js** (v20 ou supérieur recommandé)
@@ -118,7 +141,7 @@ Ouvrez [http://localhost:3000](http://localhost:3000) dans votre navigateur.
 
 ---
 
-## 5. Guide d'Utilisation
+## 6. Guide d'Utilisation
 
 1. **Création de Compte** : Inscrivez-vous sur `/signup`. Un e-mail de confirmation vous sera envoyé par Supabase.
 2. **Onboarding** : Renseignez vos métriques de base (FC Max, FC Repos). Ces données sont indispensables pour initialiser vos 5 zones d'intensité selon la méthode Friel.
@@ -130,7 +153,7 @@ Ouvrez [http://localhost:3000](http://localhost:3000) dans votre navigateur.
 
 ---
 
-## 6. Déploiement en Production
+## 7. Déploiement en Production
 
 ### Application Web (Vercel)
 SportTrack est optimisé pour être hébergé sur Vercel :
@@ -146,7 +169,7 @@ npx supabase db push
 
 ---
 
-## 7. Workflow de Contribution & Tests
+## 8. Workflow de Contribution & Tests
 
 ### Lancer les Tests
 Avant toute proposition de modification, vérifiez que le code compile correctement et que la suite de tests est au vert :
