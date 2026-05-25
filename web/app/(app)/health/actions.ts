@@ -36,7 +36,7 @@ export async function createInjury(formData: FormData): Promise<InjuryFormState>
 
   if (error) return { error: error.message }
 
-  revalidatePath("/injuries")
+  revalidatePath("/health")
   return {}
 }
 
@@ -56,7 +56,7 @@ export async function updateInjuryEndDate(
 
   if (error) return { error: error.message }
 
-  revalidatePath("/injuries")
+  revalidatePath("/health")
   return {}
 }
 
@@ -73,6 +73,6 @@ export async function deleteInjury(injuryId: string): Promise<InjuryFormState> {
 
   if (error) return { error: error.message }
 
-  revalidatePath("/injuries")
+  revalidatePath("/health")
   return {}
 }
