@@ -48,7 +48,7 @@ async function runGarminBridge(payload: Record<string, unknown>): Promise<Garmin
   return runGarminScript(payload)
 }
 
-function runGarminScript(payload: Record<string, unknown>): Promise<GarminScriptResult> {
+export function runGarminScript(payload: Record<string, unknown>): Promise<GarminScriptResult> {
   return new Promise((resolve, reject) => {
     const scriptPath = path.join(process.cwd(), "scripts", "garmin_sync.py")
     const child = spawn("python3", [scriptPath], {

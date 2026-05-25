@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/server"
 
 export async function connectGarmin(
   formData: FormData,
-): Promise<{ connected?: boolean; error?: string }> {
+): Promise<{ connected?: boolean; synced?: number; error?: string }> {
   const supabase = await createClient()
   const {
     data: { user },
@@ -23,9 +23,11 @@ export async function connectGarmin(
 
   try {
     await testGarminConnection(user.id, { email, password, mfaCode })
+    const synced = await syncGarminMetrics(user.id, 30)
     revalidatePath("/settings")
     revalidatePath("/connections")
-    return { connected: true }
+    revalidatePath("/dashboard")
+    return { connected: true, synced }
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Connexion Garmin échouée" }
   }
