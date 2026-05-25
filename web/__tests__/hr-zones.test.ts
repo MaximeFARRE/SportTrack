@@ -29,4 +29,18 @@ describe("classifyHr", () => {
   ])("classifies bpm=%i with hrMax=%i as zone %i", (bpm, hrMax, expected) => {
     expect(classifyHr(bpm, hrMax)).toBe(expected)
   })
+
+  it.each([
+    [136, 200, 2],
+    [166, 200, 3],
+    [188, 200, 4],
+    [210, 200, 5],
+  ])("classifies exact upper boundary bpm=%i as the next zone", (bpm, hrMax, expected) => {
+    expect(classifyHr(bpm, hrMax)).toBe(expected)
+  })
+
+  it("returns zone 5 for impossible or above-max percentages", () => {
+    expect(classifyHr(0, 0)).toBe(5)
+    expect(classifyHr(230, 200)).toBe(5)
+  })
 })
