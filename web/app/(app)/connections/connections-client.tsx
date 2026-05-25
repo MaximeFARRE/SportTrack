@@ -11,7 +11,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import {
   disconnectStrava,
   disconnectTerra,
+  disconnectPolar,
   syncGarminHistory,
+  syncPolarHistory,
   syncAllStravaHistory,
   syncStrava,
   syncStravaHistory,
@@ -376,6 +378,113 @@ export function StravaCard({
               className="inline-flex items-center justify-center rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground shadow hover:bg-primary/90"
             >
               Connecter Strava
+            </a>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+export function PolarCard({ connected, providerUserId, lastSyncAt }: TerraCardProps) {
+  const router = useRouter()
+  const [syncing, setSyncing] = useState(false)
+  const [disconnecting, setDisconnecting] = useState(false)
+
+  const lastSyncLabel = lastSyncAt
+    ? new Intl.DateTimeFormat("fr-FR", {
+        dateStyle: "short",
+        timeStyle: "short",
+      }).format(new Date(lastSyncAt))
+    : "Jamais"
+
+  async function handleDisconnect() {
+    setDisconnecting(true)
+    const result = await disconnectPolar()
+    setDisconnecting(false)
+    if (result.error) {
+      toast.error(result.error)
+    } else {
+      toast.success("Polar déconnecté")
+      router.refresh()
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-600 text-white font-bold text-sm">
+            P
+          </div>
+          <div>
+            <CardTitle className="text-lg">Polar Flow</CardTitle>
+            <CardDescription>Montres Polar — sommeil, récupération, FC repos</CardDescription>
+          </div>
+        </div>
+        <Badge variant={connected ? "default" : "secondary"}>
+          {connected ? "Connecté" : "Non connecté"}
+        </Badge>
+      </CardHeader>
+
+      <CardContent className="space-y-4">
+        {connected ? (
+          <>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <p className="text-muted-foreground">ID Utilisateur Polar</p>
+                <p className="font-medium truncate">{providerUserId ?? "connecté"}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Dernière actualisation</p>
+                <p className="font-medium">{lastSyncLabel}</p>
+              </div>
+            </div>
+
+            <div className="rounded-md bg-muted/50 p-3 text-xs text-muted-foreground space-y-1">
+              <p className="font-medium text-foreground">Données synchronisées</p>
+              <p>FC repos · HRV nocturne · Score sommeil · Durée de sommeil</p>
+            </div>
+
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={async () => {
+                  setSyncing(true)
+                  const result = await syncPolarHistory(30)
+                  setSyncing(false)
+                  if (result.error) {
+                    toast.error(result.error)
+                  } else {
+                    toast.success(`${result.synced ?? 0} journée(s) Polar synchronisée(s)`)
+                    router.refresh()
+                  }
+                }}
+                disabled={syncing || disconnecting}
+              >
+                {syncing ? "Synchronisation…" : "Importer 30 jours"}
+              </Button>
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={handleDisconnect}
+                disabled={syncing || disconnecting}
+              >
+                {disconnecting ? "Déconnexion…" : "Déconnecter"}
+              </Button>
+            </div>
+          </>
+        ) : (
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Connectez votre compte Polar Flow pour importer les données de récupération et de sommeil de votre montre Polar.
+            </p>
+            <a
+              href="/connections/polar/connect"
+              className="inline-flex items-center justify-center rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground shadow hover:bg-primary/90"
+            >
+              Connecter Polar
             </a>
           </div>
         )}

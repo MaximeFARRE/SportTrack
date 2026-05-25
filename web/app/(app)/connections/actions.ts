@@ -119,3 +119,42 @@ export async function disconnectStrava(): Promise<{ success?: boolean; error?: s
   revalidatePath("/connections")
   return { success: true }
 }
+
+export async function disconnectPolar(): Promise<{ success?: boolean; error?: string }> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) return { error: "Non authentifié" }
+
+  const { error } = await supabase
+    .from("provider_connections")
+    .update({ is_active: false })
+    .eq("user_id", user.id)
+    .eq("provider", "polar")
+
+  if (error) return { error: error.message }
+
+  revalidatePath("/connections")
+  return { success: true }
+}
+
+export async function syncPolarHistory(days = 30): Promise<{ synced?: number; error?: string }> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) return { error: "Non authentifié" }
+
+  try {
+    const { syncPolarMetrics } = await import("@/lib/server/polar/sync")
+    const synced = await syncPolarMetrics(user.id, days)
+    revalidatePath("/connections")
+    revalidatePath("/dashboard")
+    return { synced }
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Synchronisation Polar échouée" }
+  }
+}
