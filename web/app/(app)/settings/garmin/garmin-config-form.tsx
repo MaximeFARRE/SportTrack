@@ -37,7 +37,7 @@ export function GarminConfigForm({ connected, lastSyncAt, providerUserId }: Prop
     if (result.error) {
       toast.error(result.error)
     } else {
-      toast.success("Garmin connecté")
+      toast.success(`Garmin connecté · ${result.synced ?? 0} journée(s) importée(s)`)
       router.refresh()
     }
   }

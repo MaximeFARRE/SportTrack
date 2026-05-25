@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
 
+import { estimateHrMaxFromBirthDate } from "@/lib/compute/hr-zones"
 import { createClient } from "@/lib/supabase/server"
 
 const SPORTS = ["running", "cycling", "swimming", "triathlon", "trail", "other"] as const
@@ -66,16 +67,19 @@ export async function upsertProfileAction(
     return { error: parsed.error.issues[0]?.message ?? "Champs invalides" }
   }
 
+  const hrMax = parsed.data.hr_max ?? estimateHrMaxFromBirthDate(parsed.data.birth_date)
+  const profileData = { ...parsed.data, hr_max: hrMax }
+
   const { error } = await supabase
     .from("athlete_profiles")
-    .upsert({ user_id: user.id, ...parsed.data }, { onConflict: "user_id" })
+    .upsert({ user_id: user.id, ...profileData }, { onConflict: "user_id" })
 
   if (error) return { error: error.message }
 
-  if (parsed.data.hr_max) {
+  if (hrMax) {
     try {
       const { regenerateHrZonesForUser } = await import("@/lib/server/hr-zones")
-      await regenerateHrZonesForUser(user.id, parsed.data.hr_max)
+      await regenerateHrZonesForUser(user.id, hrMax)
     } catch (e) {
       console.error("regenerate zones failed", e)
     }

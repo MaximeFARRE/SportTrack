@@ -90,4 +90,68 @@ describe("Performance & Readiness calculations", () => {
     const estimatedTime = estimateRaceTime(activities, 10, baseDate)
     expect(estimatedTime).toBe(3360)
   })
+
+  it("should ignore non-running, future, and stale activities", () => {
+    const activities = [
+      {
+        start_date: "2026-05-24T08:00:00Z",
+        sport_type: "Run",
+        duration_sec: 3600,
+        distance_m: 10000,
+      },
+      {
+        start_date: "2026-05-24T08:00:00Z",
+        sport_type: "Ride",
+        duration_sec: 3600,
+        distance_m: 50000,
+      },
+      {
+        start_date: "2026-04-01T08:00:00Z",
+        sport_type: "Run",
+        duration_sec: 3600,
+        distance_m: 50000,
+      },
+      {
+        start_date: "2026-05-26T08:00:00Z",
+        sport_type: "Run",
+        duration_sec: 3600,
+        distance_m: 50000,
+      },
+    ]
+
+    expect(calculateGroupReadiness(activities, 10, baseDate)).toBe(55)
+  })
+
+  it("should cap readiness at 100 for runners above benchmarks", () => {
+    const activities = Array.from({ length: 4 }, (_, index) => ({
+      start_date: `2026-05-${String(24 - index * 7).padStart(2, "0")}T08:00:00Z`,
+      sport_type: "Run",
+      duration_sec: 7200,
+      distance_m: 30000,
+    }))
+
+    expect(calculateGroupReadiness(activities, 10, baseDate)).toBe(100)
+  })
+
+  it("should clamp unrealistic race estimates to physiological bounds", () => {
+    const tooFastActivities = [
+      {
+        start_date: "2026-05-24T08:00:00Z",
+        sport_type: "Run",
+        duration_sec: 60,
+        distance_m: 10000,
+      },
+    ]
+    const tooSlowActivities = [
+      {
+        start_date: "2026-05-24T08:00:00Z",
+        sport_type: "Run",
+        duration_sec: 100000,
+        distance_m: 10000,
+      },
+    ]
+
+    expect(estimateRaceTime(tooFastActivities, 10, baseDate)).toBe(1800)
+    expect(estimateRaceTime(tooSlowActivities, 10, baseDate)).toBe(6000)
+  })
 })

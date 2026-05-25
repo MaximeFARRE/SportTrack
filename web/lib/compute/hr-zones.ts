@@ -13,8 +13,8 @@ const FRIEL_ZONES = [
   { n: 1, name: "Z1 - Récupération", min: 0.0, max: 0.68, color: "#90CAF9" },
   { n: 2, name: "Z2 - Endurance", min: 0.68, max: 0.83, color: "#4CAF50" },
   { n: 3, name: "Z3 - Tempo", min: 0.83, max: 0.94, color: "#FFC107" },
-  { n: 4, name: "Z4 - Seuil", min: 0.94, max: 1.05, color: "#FF9800" },
-  { n: 5, name: "Z5 - Anaérobie", min: 1.05, max: null, color: "#F44336" },
+  { n: 4, name: "Z4 - Seuil", min: 0.94, max: 0.97, color: "#FF9800" },
+  { n: 5, name: "Z5 - Anaérobie", min: 0.97, max: 1.0, color: "#F44336" },
 ] as const
 
 export function computeZonesFromHrMax(hrMax: number): HrZone[] {
@@ -22,12 +22,29 @@ export function computeZonesFromHrMax(hrMax: number): HrZone[] {
     zone_number: zone.n,
     zone_name: zone.name,
     hr_min: Math.floor(hrMax * zone.min),
-    hr_max: zone.max != null ? Math.floor(hrMax * zone.max) : null,
+    hr_max: zone.max != null ? Math.min(hrMax, Math.floor(hrMax * zone.max)) : null,
     pct_min: zone.min,
     pct_max: zone.max,
     is_custom: false,
     color_hex: zone.color,
   }))
+}
+
+export function estimateHrMaxFromBirthDate(
+  birthDate: string | null | undefined,
+  now: Date = new Date(),
+): number | null {
+  if (!birthDate) return null
+
+  const date = new Date(birthDate)
+  if (Number.isNaN(date.getTime()) || date > now) return null
+
+  let age = now.getUTCFullYear() - date.getUTCFullYear()
+  const birthdayThisYear = new Date(Date.UTC(now.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()))
+  if (birthdayThisYear > now) age -= 1
+
+  const estimate = 220 - age
+  return estimate >= 100 && estimate <= 230 ? estimate : null
 }
 
 export function classifyHr(bpm: number, hrMax: number): number {

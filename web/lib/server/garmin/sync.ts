@@ -198,3 +198,20 @@ export async function syncGarminMetrics(userId: string, days = 30): Promise<numb
 
   return rows.length
 }
+
+export async function getActiveGarminUserIds(): Promise<string[]> {
+  const supabase = createServiceClient()
+  const { data, error } = await supabase
+    .from("provider_connections")
+    .select("user_id")
+    .eq("provider", "garmin")
+    .eq("is_active", true)
+
+  if (error) throw error
+
+  const ids = new Set<string>()
+  for (const row of data ?? []) {
+    ids.add(row.user_id)
+  }
+  return Array.from(ids)
+}

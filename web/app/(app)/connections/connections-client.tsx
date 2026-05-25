@@ -11,6 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import {
   disconnectStrava,
   disconnectTerra,
+  syncGarminHistory,
   syncAllStravaHistory,
   syncStrava,
   syncStravaHistory,
@@ -23,6 +24,9 @@ interface TerraCardProps {
 }
 
 export function GarminCard({ connected, providerUserId, lastSyncAt }: TerraCardProps) {
+  const router = useRouter()
+  const [syncing, setSyncing] = useState(false)
+
   const lastSyncLabel = lastSyncAt
     ? new Intl.DateTimeFormat("fr-FR", {
         dateStyle: "short",
@@ -49,16 +53,42 @@ export function GarminCard({ connected, providerUserId, lastSyncAt }: TerraCardP
 
       <CardContent className="space-y-4">
         {connected ? (
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <p className="text-muted-foreground">Compte Garmin</p>
-              <p className="font-medium truncate">{providerUserId ?? "connecté"}</p>
+          <>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <p className="text-muted-foreground">Compte Garmin</p>
+                <p className="font-medium truncate">{providerUserId ?? "connecté"}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Dernière donnée</p>
+                <p className="font-medium">{lastSyncLabel}</p>
+              </div>
             </div>
-            <div>
-              <p className="text-muted-foreground">Dernière donnée</p>
-              <p className="font-medium">{lastSyncLabel}</p>
+
+            <div className="rounded-md bg-muted/50 p-3 text-xs text-muted-foreground space-y-1">
+              <p className="font-medium text-foreground">Données importées sur demande</p>
+              <p>FC repos · Stress · Body Battery · Durée de sommeil</p>
             </div>
-          </div>
+
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={async () => {
+                setSyncing(true)
+                const result = await syncGarminHistory(30)
+                setSyncing(false)
+                if (result.error) {
+                  toast.error(result.error)
+                } else {
+                  toast.success(`${result.synced ?? 0} journée(s) Garmin importée(s)`)
+                  router.refresh()
+                }
+              }}
+              disabled={syncing}
+            >
+              {syncing ? "Synchronisation…" : "Importer 30 jours"}
+            </Button>
+          </>
         ) : (
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">

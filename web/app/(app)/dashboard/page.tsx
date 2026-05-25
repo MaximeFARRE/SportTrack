@@ -23,6 +23,10 @@ function formatDuration(sec: number | null): string {
   return `${m}m`
 }
 
+function formatMinutesAsHours(minutes: number): string {
+  return `${Math.floor(minutes / 60)}h${(minutes % 60).toString().padStart(2, "0")}`
+}
+
 type RiskLevel = "none" | "low" | "moderate" | "high" | "critical"
 
 const LEVEL_CONFIG: Record<RiskLevel, { label: string; advice: string; barClass: string }> = {
@@ -67,7 +71,7 @@ export default async function DashboardPage() {
         .order("start_date", { ascending: false }),
       supabase
         .from("daily_metrics")
-        .select("metric_date, training_load, training_readiness, hrv_rmssd, hrv_status, sleep_score, sleep_duration_min")
+        .select("metric_date, training_load, training_readiness, hrv_rmssd, hrv_status, sleep_score, sleep_duration_min, resting_hr, body_battery_morning, stress_score_avg")
         .eq("user_id", user.id)
         .gte("metric_date", ninetyDaysAgo.toISOString().slice(0, 10))
         .order("metric_date"),
@@ -97,6 +101,63 @@ export default async function DashboardPage() {
   const weekActivities = weekActivitiesResult.data ?? []
   const recentMetrics = recentMetricsResult.data ?? []
   const latestMetric = recentMetrics.at(-1)
+  const latestRecoveryMetric = [...recentMetrics]
+    .reverse()
+    .find(
+      (metric) =>
+        metric.hrv_rmssd != null ||
+        metric.sleep_score != null ||
+        metric.sleep_duration_min != null ||
+        metric.training_readiness != null ||
+        metric.resting_hr != null ||
+        metric.body_battery_morning != null ||
+        metric.stress_score_avg != null,
+    )
+
+  const hrvOrRestingHrValue =
+    latestRecoveryMetric?.hrv_rmssd != null
+      ? String(Math.round(latestRecoveryMetric.hrv_rmssd))
+      : latestRecoveryMetric?.resting_hr != null
+        ? String(Math.round(latestRecoveryMetric.resting_hr))
+        : "–"
+  const hrvOrRestingHrLabel =
+    latestRecoveryMetric?.hrv_rmssd != null
+      ? latestRecoveryMetric.hrv_status === "balanced"
+        ? "Équilibrée"
+        : latestRecoveryMetric.hrv_status === "low"
+          ? "Basse"
+          : latestRecoveryMetric.hrv_status === "poor"
+            ? "Mauvaise"
+            : "ms"
+      : latestRecoveryMetric?.resting_hr != null
+        ? "bpm FC repos"
+        : "–"
+  const sleepValue =
+    latestRecoveryMetric?.sleep_score != null
+      ? String(latestRecoveryMetric.sleep_score)
+      : latestRecoveryMetric?.sleep_duration_min != null
+        ? formatMinutesAsHours(latestRecoveryMetric.sleep_duration_min)
+        : "–"
+  const sleepLabel =
+    latestRecoveryMetric?.sleep_score != null
+      ? latestRecoveryMetric.sleep_duration_min != null
+        ? formatMinutesAsHours(latestRecoveryMetric.sleep_duration_min)
+        : "/100"
+      : latestRecoveryMetric?.sleep_duration_min != null
+        ? "durée"
+        : "–"
+  const readinessOrBatteryValue =
+    latestRecoveryMetric?.training_readiness != null
+      ? String(Math.round(latestRecoveryMetric.training_readiness))
+      : latestRecoveryMetric?.body_battery_morning != null
+        ? String(Math.round(latestRecoveryMetric.body_battery_morning))
+        : "–"
+  const readinessOrBatteryLabel =
+    latestRecoveryMetric?.training_readiness != null
+      ? "/100"
+      : latestRecoveryMetric?.body_battery_morning != null
+        ? "Body Battery"
+        : "–"
   const sixWeeksActivities = sixWeeksActivitiesResult.data ?? []
   const blocks = trainingBlocksResult.data ?? []
   const activeBlock = blocks.find((b: any) => b.start_date <= today && today <= b.end_date)
@@ -105,7 +166,7 @@ export default async function DashboardPage() {
   const riskData = riskResult.data
   const { score: formScore, level: formLevel, reasons: formReasons } = riskData
     ? { score: riskData.score, level: riskData.level as RiskLevel, reasons: riskData.reasons as string[] }
-    : getFallbackScore(latestMetric?.training_readiness ?? null)
+    : getFallbackScore(latestRecoveryMetric?.training_readiness ?? null)
   const { label: formLabel, advice: formAdvice, barClass: formBarClass } = LEVEL_CONFIG[formLevel]
 
   const weekZonesArrays: ZoneEntry[][] = weekActivities
@@ -253,22 +314,10 @@ export default async function DashboardPage() {
           <CardContent className="pt-4">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Zap className="h-4 w-4 text-pink-500" />
-              HRV
+              HRV / FC repos
             </div>
-            <div className="mt-1 text-2xl font-bold">
-              {latestMetric?.hrv_rmssd != null
-                ? Math.round(latestMetric.hrv_rmssd)
-                : "–"}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {latestMetric?.hrv_status === "balanced"
-                ? "Équilibrée"
-                : latestMetric?.hrv_status === "low"
-                  ? "Basse"
-                  : latestMetric?.hrv_status === "poor"
-                    ? "Mauvaise"
-                    : "–"}
-            </p>
+            <div className="mt-1 text-2xl font-bold">{hrvOrRestingHrValue}</div>
+            <p className="text-xs text-muted-foreground">{hrvOrRestingHrLabel}</p>
           </CardContent>
         </Card>
 
@@ -279,13 +328,9 @@ export default async function DashboardPage() {
               Sommeil
             </div>
             <div className="mt-1 text-2xl font-bold">
-              {latestMetric?.sleep_score != null ? latestMetric.sleep_score : "–"}
+              {sleepValue}
             </div>
-            <p className="text-xs text-muted-foreground">
-              {latestMetric?.sleep_duration_min != null
-                ? `${Math.floor(latestMetric.sleep_duration_min / 60)}h${(latestMetric.sleep_duration_min % 60).toString().padStart(2, "0")}`
-                : "–"}
-            </p>
+            <p className="text-xs text-muted-foreground">{sleepLabel}</p>
           </CardContent>
         </Card>
 
@@ -293,14 +338,10 @@ export default async function DashboardPage() {
           <CardContent className="pt-4">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Activity className="h-4 w-4 text-green-500" />
-              Readiness
+              Readiness / Batterie
             </div>
-            <div className="mt-1 text-2xl font-bold">
-              {latestMetric?.training_readiness != null
-                ? Math.round(latestMetric.training_readiness)
-                : "–"}
-            </div>
-            <p className="text-xs text-muted-foreground">/100</p>
+            <div className="mt-1 text-2xl font-bold">{readinessOrBatteryValue}</div>
+            <p className="text-xs text-muted-foreground">{readinessOrBatteryLabel}</p>
           </CardContent>
         </Card>
       </div>
