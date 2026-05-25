@@ -7,8 +7,8 @@ import {
   ListChecks,
   Plug,
   Settings,
-  Sparkles,
   UserRound,
+  Users,
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 
@@ -25,7 +25,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/planning", label: "Planning", icon: CalendarClock },
   { href: "/progression", label: "Progression", icon: LineChart },
   { href: "/injuries", label: "Blessures", icon: HeartPulse },
-  { href: "/coach", label: "Coach IA", icon: Sparkles },
+  { href: "/coaching", label: "Coaching & Groupes", icon: Users },
   { href: "/connections", label: "Connexions", icon: Plug },
   { href: "/profile", label: "Profil", icon: UserRound },
   { href: "/settings", label: "Paramètres", icon: Settings },
