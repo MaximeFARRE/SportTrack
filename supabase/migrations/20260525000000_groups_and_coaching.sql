@@ -1,4 +1,65 @@
 -- ============================================================================
+-- Table: groups
+-- ============================================================================
+create table if not exists public.groups (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  description text,
+  target_event_name text not null,
+  target_event_date date not null,
+  target_distance_km numeric not null,
+  invite_code text unique not null,
+  created_by uuid not null references auth.users(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+-- ============================================================================
+-- Table: group_members
+-- ============================================================================
+create table if not exists public.group_members (
+  group_id uuid not null references public.groups(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  role text not null check (role in ('admin', 'coach', 'athlete')),
+  target_time_sec int,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  primary key (group_id, user_id)
+);
+
+-- ============================================================================
+-- Table: group_planned_sessions
+-- ============================================================================
+create table if not exists public.group_planned_sessions (
+  id uuid primary key default gen_random_uuid(),
+  group_id uuid not null references public.groups(id) on delete cascade,
+  planned_date date not null,
+  planned_time time,
+  sport_type text not null,
+  session_type text not null,
+  planned_duration_min int,
+  planned_distance_km numeric,
+  description text,
+  created_by uuid not null references auth.users(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+-- ============================================================================
+-- Table: group_training_blocks
+-- ============================================================================
+create table if not exists public.group_training_blocks (
+  id uuid primary key default gen_random_uuid(),
+  group_id uuid not null references public.groups(id) on delete cascade,
+  name text not null,
+  start_date date not null,
+  end_date date not null,
+  created_by uuid not null references auth.users(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  constraint group_training_blocks_dates check (start_date <= end_date)
+);
+
+-- ============================================================================
 -- Helper security definer functions to bypass RLS recursion
 -- ============================================================================
 
@@ -55,21 +116,10 @@ as $$
 $$;
 
 -- ============================================================================
--- Table: groups
+-- RLS Activation & Policies
 -- ============================================================================
-create table if not exists public.groups (
-  id uuid primary key default gen_random_uuid(),
-  name text not null,
-  description text,
-  target_event_name text not null,
-  target_event_date date not null,
-  target_distance_km numeric not null,
-  invite_code text unique not null,
-  created_by uuid not null references auth.users(id) on delete cascade,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
 
+-- groups
 alter table public.groups enable row level security;
 
 drop policy if exists "groups_select" on public.groups;
@@ -88,19 +138,7 @@ drop policy if exists "groups_delete" on public.groups;
 create policy "groups_delete" on public.groups
   for delete using (auth.uid() = created_by);
 
--- ============================================================================
--- Table: group_members
--- ============================================================================
-create table if not exists public.group_members (
-  group_id uuid not null references public.groups(id) on delete cascade,
-  user_id uuid not null references auth.users(id) on delete cascade,
-  role text not null check (role in ('admin', 'coach', 'athlete')),
-  target_time_sec int,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  primary key (group_id, user_id)
-);
-
+-- group_members
 alter table public.group_members enable row level security;
 
 drop policy if exists "group_members_select" on public.group_members;
@@ -119,24 +157,7 @@ drop policy if exists "group_members_delete" on public.group_members;
 create policy "group_members_delete" on public.group_members
   for delete using (auth.uid() = user_id or public.is_group_coach(group_id, auth.uid()));
 
--- ============================================================================
--- Table: group_planned_sessions
--- ============================================================================
-create table if not exists public.group_planned_sessions (
-  id uuid primary key default gen_random_uuid(),
-  group_id uuid not null references public.groups(id) on delete cascade,
-  planned_date date not null,
-  planned_time time,
-  sport_type text not null,
-  session_type text not null,
-  planned_duration_min int,
-  planned_distance_km numeric,
-  description text,
-  created_by uuid not null references auth.users(id) on delete cascade,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
-
+-- group_planned_sessions
 alter table public.group_planned_sessions enable row level security;
 
 drop policy if exists "group_planned_select" on public.group_planned_sessions;
@@ -147,20 +168,7 @@ drop policy if exists "group_planned_all_coach" on public.group_planned_sessions
 create policy "group_planned_all_coach" on public.group_planned_sessions
   for all using (public.is_group_coach(group_id, auth.uid())) with check (public.is_group_coach(group_id, auth.uid()));
 
--- ============================================================================
--- Table: group_training_blocks
--- ============================================================================
-create table if not exists public.group_training_blocks (
-  id uuid primary key default gen_random_uuid(),
-  group_id uuid not null references public.groups(id) on delete cascade,
-  name text not null,
-  start_date date not null,
-  end_date date not null,
-  created_by uuid not null references auth.users(id) on delete cascade,
-  created_at timestamptz not null default now(),
-  constraint group_training_blocks_dates check (start_date <= end_date)
-);
-
+-- group_training_blocks
 alter table public.group_training_blocks enable row level security;
 
 drop policy if exists "group_blocks_select" on public.group_training_blocks;
@@ -261,7 +269,7 @@ begin
     'planned'
   from public.group_members gm
   where gm.group_id = new.group_id
-    and gm.role != 'coach' -- do not add to coaches who don't want it, or add to everyone. Let's do athletes and admins.
+    and gm.role != 'coach'
   on conflict do nothing;
   return new;
 end;
@@ -286,7 +294,7 @@ begin
     description = new.description,
     updated_at = now()
   where group_planned_session_id = new.id
-    and status = 'planned'; -- only sync if the athlete hasn't marked it completed/skipped
+    and status = 'planned';
   return new;
 end;
 $$ language plpgsql security definer;
