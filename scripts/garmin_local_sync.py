@@ -69,21 +69,19 @@ def first_number(*values):
 
 def metric_from_stats(user_id: str, day: str, stats: dict) -> dict:
     sleeping_seconds = number(stats.get("sleepingSeconds"))
-    return compact(
-        {
-            "user_id": user_id,
-            "metric_date": day,
-            "resting_hr": rounded(stats.get("restingHeartRate")),
-            "stress_score_avg": rounded(stats.get("averageStressLevel")),
-            "body_battery_morning": rounded(
-                first_number(stats.get("bodyBatteryHighestValue"), stats.get("bodyBatteryMostRecentValue"))
-            ),
-            "body_battery_evening": rounded(
-                first_number(stats.get("bodyBatteryLowestValue"), stats.get("bodyBatteryMostRecentValue"))
-            ),
-            "sleep_duration_min": rounded(sleeping_seconds / 60) if sleeping_seconds is not None else None,
-        }
-    )
+    return {
+        "user_id": user_id,
+        "metric_date": day,
+        "resting_hr": rounded(stats.get("restingHeartRate")),
+        "stress_score_avg": rounded(stats.get("averageStressLevel")),
+        "body_battery_morning": rounded(
+            first_number(stats.get("bodyBatteryHighestValue"), stats.get("bodyBatteryMostRecentValue"))
+        ),
+        "body_battery_evening": rounded(
+            first_number(stats.get("bodyBatteryLowestValue"), stats.get("bodyBatteryMostRecentValue"))
+        ),
+        "sleep_duration_min": rounded(sleeping_seconds / 60) if sleeping_seconds is not None else None,
+    }
 
 
 def compact(row: dict) -> dict:
