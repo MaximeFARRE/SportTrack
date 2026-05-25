@@ -59,6 +59,13 @@ def rounded(value):
     return round(value) if value is not None else None
 
 
+def bounded_int(value, minimum: int, maximum: int):
+    value = rounded(value)
+    if value is None or value < minimum or value > maximum:
+        return None
+    return value
+
+
 def first_number(*values):
     for value in values:
         value = number(value)
@@ -73,12 +80,16 @@ def metric_from_stats(user_id: str, day: str, stats: dict) -> dict:
         "user_id": user_id,
         "metric_date": day,
         "resting_hr": rounded(stats.get("restingHeartRate")),
-        "stress_score_avg": rounded(stats.get("averageStressLevel")),
-        "body_battery_morning": rounded(
-            first_number(stats.get("bodyBatteryHighestValue"), stats.get("bodyBatteryMostRecentValue"))
+        "stress_score_avg": bounded_int(stats.get("averageStressLevel"), 0, 100),
+        "body_battery_morning": bounded_int(
+            first_number(stats.get("bodyBatteryHighestValue"), stats.get("bodyBatteryMostRecentValue")),
+            0,
+            100,
         ),
-        "body_battery_evening": rounded(
-            first_number(stats.get("bodyBatteryLowestValue"), stats.get("bodyBatteryMostRecentValue"))
+        "body_battery_evening": bounded_int(
+            first_number(stats.get("bodyBatteryLowestValue"), stats.get("bodyBatteryMostRecentValue")),
+            0,
+            100,
         ),
         "sleep_duration_min": rounded(sleeping_seconds / 60) if sleeping_seconds is not None else None,
     }
