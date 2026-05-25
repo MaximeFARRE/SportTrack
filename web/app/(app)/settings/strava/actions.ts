@@ -80,6 +80,17 @@ export async function saveStravaConfig(
     .upsert({ id: 1, client_id, client_secret, webhook_verify_token }, { onConflict: "id" })
 
   if (error) return { error: error.message }
+
+  // Automatically register webhook since credentials have changed
+  if (client_id && client_secret) {
+    const webhookResult = await registerStravaWebhook()
+    if (webhookResult.error) {
+      return {
+        error: `Configuration enregistrée, mais échec de l'activation du webhook : ${webhookResult.error}`,
+      }
+    }
+  }
+
   return {}
 }
 
