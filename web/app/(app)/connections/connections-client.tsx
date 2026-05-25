@@ -13,6 +13,7 @@ import {
   disconnectTerra,
   disconnectPolar,
   syncGarminHistory,
+  syncAllPolarHistory,
   syncPolarHistory,
   syncAllStravaHistory,
   syncStrava,
@@ -389,6 +390,7 @@ export function StravaCard({
 export function PolarCard({ connected, providerUserId, lastSyncAt }: TerraCardProps) {
   const router = useRouter()
   const [syncing, setSyncing] = useState(false)
+  const [importingAll, setImportingAll] = useState(false)
   const [disconnecting, setDisconnecting] = useState(false)
 
   const lastSyncLabel = lastSyncAt
@@ -406,6 +408,18 @@ export function PolarCard({ connected, providerUserId, lastSyncAt }: TerraCardPr
       toast.error(result.error)
     } else {
       toast.success("Polar déconnecté")
+      router.refresh()
+    }
+  }
+
+  async function handleImportAllHistory() {
+    setImportingAll(true)
+    const result = await syncAllPolarHistory()
+    setImportingAll(false)
+    if (result.error) {
+      toast.error(result.error)
+    } else {
+      toast.success(`Import complet Polar terminé — ${result.synced ?? 0} journée(s)`)
       router.refresh()
     }
   }
@@ -461,15 +475,23 @@ export function PolarCard({ connected, providerUserId, lastSyncAt }: TerraCardPr
                     router.refresh()
                   }
                 }}
-                disabled={syncing || disconnecting}
+                disabled={syncing || importingAll || disconnecting}
               >
                 {syncing ? "Synchronisation…" : "Importer 30 jours"}
               </Button>
               <Button
                 size="sm"
+                variant="outline"
+                onClick={handleImportAllHistory}
+                disabled={syncing || importingAll || disconnecting}
+              >
+                {importingAll ? "Import complet…" : "Importer tout l'historique"}
+              </Button>
+              <Button
+                size="sm"
                 variant="destructive"
                 onClick={handleDisconnect}
-                disabled={syncing || disconnecting}
+                disabled={syncing || importingAll || disconnecting}
               >
                 {disconnecting ? "Déconnexion…" : "Déconnecter"}
               </Button>

@@ -6,6 +6,8 @@ import { syncGarminMetrics } from "@/lib/server/garmin/sync"
 import { importAllStravaHistory, importStravaHistory, syncRecentStrava } from "@/lib/server/strava/sync"
 import { createClient } from "@/lib/supabase/server"
 
+const POLAR_FULL_HISTORY_DAYS = 3650
+
 export async function syncStrava(): Promise<{ synced?: number; error?: string }> {
   const supabase = await createClient()
   const {
@@ -156,5 +158,24 @@ export async function syncPolarHistory(days = 30): Promise<{ synced?: number; er
     return { synced }
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Synchronisation Polar échouée" }
+  }
+}
+
+export async function syncAllPolarHistory(): Promise<{ synced?: number; error?: string }> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) return { error: "Non authentifié" }
+
+  try {
+    const { syncPolarMetrics } = await import("@/lib/server/polar/sync")
+    const synced = await syncPolarMetrics(user.id, POLAR_FULL_HISTORY_DAYS)
+    revalidatePath("/connections")
+    revalidatePath("/dashboard")
+    return { synced }
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Import complet Polar échoué" }
   }
 }

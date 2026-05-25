@@ -111,7 +111,7 @@ export function HealthChart({ data }: HealthChartProps) {
           </div>
         ) : (
           <ResponsiveContainer width="100%" height={180}>
-            <LineChart data={chartData} margin={{ top: 5, right: 5, bottom: 5, left: -25 }}>
+            <LineChart data={chartData} margin={{ top: 5, right: 5, bottom: 5, left: 0 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" opacity={0.3} />
               <XAxis
                 dataKey="date"
@@ -125,7 +125,7 @@ export function HealthChart({ data }: HealthChartProps) {
                 tick={{ fontSize: 9, fill: "var(--muted-foreground)" }}
                 tickLine={false}
                 axisLine={false}
-                width={35}
+                width={40}
                 unit={activeTab === "hr" ? " bpm" : " ms"}
               />
               <Tooltip content={<CustomTooltip type={activeTab} />} />
