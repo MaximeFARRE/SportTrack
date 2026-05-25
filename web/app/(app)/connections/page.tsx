@@ -2,50 +2,62 @@ import type { Metadata } from "next"
 
 import { createClient } from "@/lib/supabase/server"
 
-import { GarminCard, StravaCard, TerraCard } from "./connections-client"
+import { GarminCard, StravaCard, TerraCard, PolarCard } from "./connections-client"
 
 export const metadata: Metadata = { title: "Mes connexions · SportTrack" }
 
 export default async function ConnectionsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ strava?: string; terra?: string }>
+  searchParams: Promise<{ strava?: string; terra?: string; polar?: string }>
 }) {
-  const { strava, terra } = await searchParams
+  const { strava, terra, polar } = await searchParams
   const supabase = await createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
 
-  const [{ data: stravaConn }, { data: terraConn }, { data: garminConn }, { count: activitiesCount }] =
-    await Promise.all([
-      supabase
-        .from("provider_connections")
-        .select("provider_user_id,last_sync_at,is_active")
-        .eq("user_id", user!.id)
-        .eq("provider", "strava")
-        .eq("is_active", true)
-        .maybeSingle(),
-      supabase
-        .from("provider_connections")
-        .select("provider_user_id,last_sync_at,is_active")
-        .eq("user_id", user!.id)
-        .eq("provider", "terra")
-        .eq("is_active", true)
-        .maybeSingle(),
-      supabase
-        .from("provider_connections")
-        .select("provider_user_id,last_sync_at,is_active")
-        .eq("user_id", user!.id)
-        .eq("provider", "garmin")
-        .eq("is_active", true)
-        .maybeSingle(),
-      supabase
-        .from("activities")
-        .select("id", { count: "exact", head: true })
-        .eq("user_id", user!.id)
-        .eq("provider", "strava"),
-    ])
+  const [
+    { data: stravaConn },
+    { data: terraConn },
+    { data: garminConn },
+    { data: polarConn },
+    { count: activitiesCount },
+  ] = await Promise.all([
+    supabase
+      .from("provider_connections")
+      .select("provider_user_id,last_sync_at,is_active")
+      .eq("user_id", user!.id)
+      .eq("provider", "strava")
+      .eq("is_active", true)
+      .maybeSingle(),
+    supabase
+      .from("provider_connections")
+      .select("provider_user_id,last_sync_at,is_active")
+      .eq("user_id", user!.id)
+      .eq("provider", "terra")
+      .eq("is_active", true)
+      .maybeSingle(),
+    supabase
+      .from("provider_connections")
+      .select("provider_user_id,last_sync_at,is_active")
+      .eq("user_id", user!.id)
+      .eq("provider", "garmin")
+      .eq("is_active", true)
+      .maybeSingle(),
+    supabase
+      .from("provider_connections")
+      .select("provider_user_id,last_sync_at,is_active")
+      .eq("user_id", user!.id)
+      .eq("provider", "polar")
+      .eq("is_active", true)
+      .maybeSingle(),
+    supabase
+      .from("activities")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user!.id)
+      .eq("provider", "strava"),
+  ])
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
@@ -81,6 +93,18 @@ export default async function ConnectionsPage({
         </div>
       ) : null}
 
+      {polar === "connected" ? (
+        <div className="rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-900">
+          Polar est connecté. Une première synchronisation des données de santé est en cours.
+        </div>
+      ) : null}
+
+      {polar === "error" ? (
+        <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
+          La connexion Polar a échoué. Vérifiez la configuration du Client ID / Secret développeur Polar puis réessayez.
+        </div>
+      ) : null}
+
       <StravaCard
         connected={!!stravaConn}
         providerUserId={stravaConn?.provider_user_id}
@@ -92,6 +116,12 @@ export default async function ConnectionsPage({
         connected={!!garminConn}
         providerUserId={garminConn?.provider_user_id}
         lastSyncAt={garminConn?.last_sync_at}
+      />
+
+      <PolarCard
+        connected={!!polarConn}
+        providerUserId={polarConn?.provider_user_id}
+        lastSyncAt={polarConn?.last_sync_at}
       />
 
       <TerraCard

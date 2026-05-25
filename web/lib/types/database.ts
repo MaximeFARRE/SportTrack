@@ -142,7 +142,7 @@ export type Database = {
         Row: {
           id: string
           user_id: string
-          provider: "strava" | "terra" | "garmin"
+          provider: "strava" | "terra" | "garmin" | "polar"
           provider_user_id: string
           access_token: string | null
           refresh_token: string | null
@@ -156,7 +156,7 @@ export type Database = {
         Insert: {
           id?: string
           user_id: string
-          provider: "strava" | "terra" | "garmin"
+          provider: "strava" | "terra" | "garmin" | "polar"
           provider_user_id: string
           access_token?: string | null
           refresh_token?: string | null
@@ -529,6 +529,48 @@ export type Database = {
           dev_id?: string
           api_key?: string
           webhook_secret?: string
+        }
+        Relationships: []
+      }
+      polar_config: {
+        Row: {
+          id: 1
+          client_id: string
+          client_secret: string
+          updated_at: string
+        }
+        Insert: {
+          id?: 1
+          client_id?: string
+          client_secret?: string
+        }
+        Update: {
+          client_id?: string
+          client_secret?: string
+        }
+        Relationships: []
+      }
+      app_feedback: {
+        Row: {
+          id: string
+          user_id: string
+          feedback_type: "bug" | "feature" | "other"
+          message: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          feedback_type: "bug" | "feature" | "other"
+          message: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          feedback_type?: "bug" | "feature" | "other"
+          message?: string
+          created_at?: string
         }
         Relationships: []
       }

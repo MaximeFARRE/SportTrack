@@ -24,7 +24,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/activities", label: "Activités", icon: ListChecks },
   { href: "/planning", label: "Planning", icon: CalendarClock },
   { href: "/progression", label: "Progression", icon: LineChart },
-  { href: "/injuries", label: "Blessures", icon: HeartPulse },
+  { href: "/health", label: "Santé", icon: HeartPulse },
   { href: "/coaching", label: "Coaching & Groupes", icon: Users },
   { href: "/connections", label: "Connexions", icon: Plug },
   { href: "/profile", label: "Profil", icon: UserRound },

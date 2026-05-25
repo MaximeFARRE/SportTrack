@@ -9,53 +9,52 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
-import { saveStravaConfig, type StravaConfigData } from "./actions"
+import { savePolarConfig, type PolarConfigData } from "./actions"
 
 interface Props {
-  initialConfig: StravaConfigData
+  initialConfig: PolarConfigData
 }
 
-export function StravaConfigForm({ initialConfig }: Props) {
+export function PolarConfigForm({ initialConfig }: Props) {
   const router = useRouter()
   const [saving, setSaving] = useState(false)
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setSaving(true)
-    const result = await saveStravaConfig(new FormData(e.currentTarget))
+    const result = await savePolarConfig(new FormData(e.currentTarget))
     setSaving(false)
     if (result.error) {
       toast.error(result.error)
     } else {
-      toast.success("Configuration Strava enregistrée")
+      toast.success("Configuration Polar enregistrée")
       router.refresh()
     }
   }
 
   return (
     <div className="space-y-6">
-      {/* Credentials form */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Identifiants de l'application Strava</CardTitle>
+          <CardTitle className="text-lg">Identifiants de l'application Polar Flow</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className="space-y-2">
-              <Label htmlFor="client_id">Client ID</Label>
+              <Label htmlFor="polar_client_id">Client ID</Label>
               <Input
-                id="client_id"
+                id="polar_client_id"
                 name="client_id"
-                placeholder="185192"
+                placeholder="Ex: 5c8bde34-8c88-466d-8888-888888888888"
                 defaultValue={initialConfig.client_id}
                 autoComplete="off"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="client_secret">Client Secret</Label>
+              <Label htmlFor="polar_client_secret">Client Secret</Label>
               <Input
-                id="client_secret"
+                id="polar_client_secret"
                 name="client_secret"
                 type="password"
                 placeholder="••••••••••••••••"
@@ -63,8 +62,7 @@ export function StravaConfigForm({ initialConfig }: Props) {
                 autoComplete="new-password"
               />
               <p className="text-xs text-muted-foreground">
-                Stocké côté serveur. Le secret de vérification du webhook est généré
-                automatiquement.
+                Stocké de manière sécurisée côté serveur.
               </p>
             </div>
 
