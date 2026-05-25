@@ -6,6 +6,8 @@ import { getStravaConfig } from "./strava/actions"
 import { GarminConfigForm } from "./garmin/garmin-config-form"
 import { TerraConfigForm } from "./terra/terra-config-form"
 import { getTerraConfig } from "./terra/actions"
+import { PolarConfigForm } from "./polar/polar-config-form"
+import { getPolarConfig } from "./polar/actions"
 import { FeedbackForm } from "./feedback-form"
 import { createClient } from "@/lib/supabase/server"
 
@@ -32,14 +34,17 @@ export default async function SettingsPage({
 
   let stravaConfig = { client_id: "", client_secret: "" }
   let terraConfig = { dev_id: "", api_key: "", webhook_secret: "" }
+  let polarConfig = { client_id: "", client_secret: "" }
 
   if (isAdmin) {
-    const [sc, tc] = await Promise.all([
+    const [sc, tc, pc] = await Promise.all([
       getStravaConfig(),
       getTerraConfig(),
+      getPolarConfig(),
     ])
     stravaConfig = sc
     terraConfig = tc
+    polarConfig = pc
   }
 
   const { data: garminConn } = await supabase
@@ -115,6 +120,17 @@ export default async function SettingsPage({
               callbackUrl={`${baseUrl}/api/terra/webhook`}
               initialConfig={terraConfig}
             />
+          </section>
+
+          <section className="space-y-4">
+            <div>
+              <h2 className="text-lg font-semibold">Clés API Polar Flow</h2>
+              <p className="text-sm text-muted-foreground">
+                Configurez l'intégration Polar Flow en direct par OAuth.
+              </p>
+            </div>
+
+            <PolarConfigForm initialConfig={polarConfig} />
           </section>
         </>
       )}
