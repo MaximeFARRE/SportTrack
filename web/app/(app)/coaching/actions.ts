@@ -20,7 +20,7 @@ export async function createGroup(payload: {
   targetEventDate: string
   targetDistanceKm: number
 }) {
-  const supabase = await createClient()
+  const supabase = (await createClient()) as any
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -64,7 +64,7 @@ export async function createGroup(payload: {
 }
 
 export async function joinGroup(inviteCode: string) {
-  const supabase = await createClient()
+  const supabase = (await createClient()) as any
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -104,7 +104,7 @@ export async function joinGroup(inviteCode: string) {
 }
 
 export async function updateGroupMemberTargetTime(groupId: string, targetTimeSec: number | null) {
-  const supabase = await createClient()
+  const supabase = (await createClient()) as any
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -124,7 +124,7 @@ export async function updateGroupMemberTargetTime(groupId: string, targetTimeSec
 }
 
 export async function promoteMemberToCoach(groupId: string, targetUserId: string, newRole: "coach" | "athlete") {
-  const supabase = await createClient()
+  const supabase = (await createClient()) as any
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -167,7 +167,7 @@ export async function createGroupPlannedSession(
     description: string | null
   }
 ) {
-  const supabase = await createClient()
+  const supabase = (await createClient()) as any
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -201,7 +201,7 @@ export async function createGroupPlannedSession(
 }
 
 export async function deleteGroupPlannedSession(groupId: string, sessionId: string) {
-  const supabase = await createClient()
+  const supabase = (await createClient()) as any
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -249,7 +249,7 @@ export async function createGroupTrainingBlock(
     end_date: string
   }
 ) {
-  const supabase = await createClient()
+  const supabase = (await createClient()) as any
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -282,7 +282,7 @@ export async function createGroupTrainingBlock(
 }
 
 export async function deleteGroupTrainingBlock(groupId: string, blockId: string) {
-  const supabase = await createClient()
+  const supabase = (await createClient()) as any
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -314,7 +314,7 @@ export async function deleteGroupTrainingBlock(groupId: string, blockId: string)
 }
 
 export async function leaveGroup(groupId: string) {
-  const supabase = await createClient()
+  const supabase = (await createClient()) as any
   const {
     data: { user },
   } = await supabase.auth.getUser()
