@@ -59,6 +59,13 @@ def rounded(value):
     return round(value) if value is not None else None
 
 
+def bounded_int(value, minimum: int, maximum: int):
+    value = rounded(value)
+    if value is None or value < minimum or value > maximum:
+        return None
+    return value
+
+
 def first_number(*values):
     for value in values:
         value = number(value)
@@ -67,23 +74,103 @@ def first_number(*values):
     return None
 
 
-def metric_from_stats(user_id: str, day: str, stats: dict) -> dict:
+def nested_number(value, *paths):
+    for path in paths:
+        current = value
+        for key in path:
+            if isinstance(current, dict):
+                current = current.get(key)
+            else:
+                current = None
+                break
+        current = number(current)
+        if current is not None:
+            return current
+    return None
+
+
+def average_series_value(value, *keys):
+    series = None
+    if isinstance(value, list):
+        series = value
+    elif isinstance(value, dict):
+        for key in keys:
+            candidate = value.get(key)
+            if isinstance(candidate, list):
+                series = candidate
+                break
+    if not series:
+        return None
+
+    values = []
+    for item in series:
+        if isinstance(item, dict):
+            values.extend(number(item.get(key)) for key in keys)
+        else:
+            values.append(number(item))
+    values = [value for value in values if value is not None]
+    return sum(values) / len(values) if values else None
+
+
+def max_metric_value(max_metrics):
+    entries = max_metrics if isinstance(max_metrics, list) else [max_metrics]
+    for entry in entries:
+        value = nested_number(
+            entry,
+            ("generic", "vo2MaxPreciseValue"),
+            ("generic", "vo2MaxValue"),
+            ("vo2MaxPreciseValue",),
+            ("vo2MaxValue",),
+        )
+        if value is not None:
+            return value
+    return None
+
+
+def metric_from_stats(
+    user_id: str,
+    day: str,
+    stats: dict,
+    hrv: dict | None = None,
+    spo2: dict | None = None,
+    max_metrics: dict | None = None,
+    respiration: dict | None = None,
+) -> dict:
     sleeping_seconds = number(stats.get("sleepingSeconds"))
-    return compact(
-        {
-            "user_id": user_id,
-            "metric_date": day,
-            "resting_hr": rounded(stats.get("restingHeartRate")),
-            "stress_score_avg": rounded(stats.get("averageStressLevel")),
-            "body_battery_morning": rounded(
-                first_number(stats.get("bodyBatteryHighestValue"), stats.get("bodyBatteryMostRecentValue"))
-            ),
-            "body_battery_evening": rounded(
-                first_number(stats.get("bodyBatteryLowestValue"), stats.get("bodyBatteryMostRecentValue"))
-            ),
-            "sleep_duration_min": rounded(sleeping_seconds / 60) if sleeping_seconds is not None else None,
-        }
-    )
+    return {
+        "user_id": user_id,
+        "metric_date": day,
+        "resting_hr": rounded(stats.get("restingHeartRate")),
+        "hrv_rmssd": first_number(
+            nested_number(hrv, ("hrvSummary", "weeklyAvg"), ("hrvSummary", "lastNightAvg")),
+            average_series_value(hrv, "hrvReadings", "value", "hrvValue"),
+        ),
+        "stress_score_avg": bounded_int(stats.get("averageStressLevel"), 0, 100),
+        "spo2_avg": first_number(
+            nested_number(spo2, ("avgSpO2",), ("averageSpO2",), ("avgSPO2",)),
+            average_series_value(spo2, "spO2Values", "spo2Values", "value", "spo2"),
+        ),
+        "respiration_avg": first_number(
+            nested_number(respiration, ("avgWakingRespirationValue",), ("avgRespirationValue",)),
+            average_series_value(respiration, "respirationValuesArray", "respirationValues", "value"),
+        ),
+        "vo2max_estimated": first_number(
+            max_metric_value(max_metrics),
+            nested_number(max_metrics, ("generic", "vo2MaxPreciseValue")),
+            nested_number(max_metrics, ("vo2MaxPreciseValue",), ("vo2MaxValue",)),
+        ),
+        "body_battery_morning": bounded_int(
+            first_number(stats.get("bodyBatteryHighestValue"), stats.get("bodyBatteryMostRecentValue")),
+            0,
+            100,
+        ),
+        "body_battery_evening": bounded_int(
+            first_number(stats.get("bodyBatteryLowestValue"), stats.get("bodyBatteryMostRecentValue")),
+            0,
+            100,
+        ),
+        "sleep_duration_min": rounded(sleeping_seconds / 60) if sleeping_seconds is not None else None,
+    }
 
 
 def compact(row: dict) -> dict:
@@ -194,7 +281,18 @@ def main() -> None:
             print(f"skip {day}: {exc}", file=sys.stderr)
             continue
         if stats:
-            rows.append(metric_from_stats(user_id, day, stats))
+            extras = {}
+            for name, method in (
+                ("hrv", client.get_hrv_data),
+                ("spo2", client.get_spo2_data),
+                ("max_metrics", client.get_max_metrics),
+                ("respiration", client.get_respiration_data),
+            ):
+                try:
+                    extras[name] = method(day)
+                except Exception:
+                    extras[name] = None
+            rows.append(metric_from_stats(user_id, day, stats, **extras))
 
     supabase.upsert("daily_metrics", rows, "user_id,metric_date")
     print(f"Imported {len(rows)} Garmin daily metric row(s)")
