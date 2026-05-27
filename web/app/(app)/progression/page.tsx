@@ -12,6 +12,8 @@ import { UserPRs } from "@/components/progression/user-prs"
 import { StravaAchievements } from "@/components/progression/strava-achievements"
 import { ensureValidStravaToken } from "@/lib/server/strava/tokens"
 
+import { ProgressionAutoRefresh } from "./progression-auto-refresh"
+
 export const metadata: Metadata = { title: "Progression · SportTrack" }
 
 function computePolarization(zones: ZoneEntry[]): { low: number; mid: number; high: number } {
@@ -132,6 +134,7 @@ export default async function ProgressionPage() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
+      <ProgressionAutoRefresh />
       <div className="flex items-center gap-2">
         <LineChart className="h-5 w-5 text-primary" />
         <h1 className="text-xl font-semibold">Progression</h1>

@@ -12,6 +12,7 @@
  *     -F verify_token=<STRAVA_WEBHOOK_VERIFY_TOKEN>
  */
 
+import { revalidatePath } from "next/cache"
 import { NextRequest, NextResponse } from "next/server"
 
 import { createServiceClient } from "@/lib/supabase/service"
@@ -78,8 +79,15 @@ async function processActivityEvent(event: StravaEvent) {
 
   if (event.aspect_type === "delete") {
     await deleteStravaActivity(conn.user_id, event.object_id)
+    revalidateStravaViews()
     return
   }
 
   await syncSingleStravaActivity(conn.user_id, event.object_id)
+  revalidateStravaViews()
+}
+
+function revalidateStravaViews() {
+  revalidatePath("/dashboard")
+  revalidatePath("/progression")
 }
