@@ -8,6 +8,12 @@ import { createClient } from "@/lib/supabase/server"
 
 const POLAR_FULL_HISTORY_DAYS = 3650
 
+function revalidateStravaViews() {
+  revalidatePath("/connections")
+  revalidatePath("/dashboard")
+  revalidatePath("/progression")
+}
+
 export async function syncStrava(): Promise<{ synced?: number; error?: string }> {
   const supabase = await createClient()
   const {
@@ -18,8 +24,7 @@ export async function syncStrava(): Promise<{ synced?: number; error?: string }>
 
   try {
     const { imported } = await syncRecentStrava(user.id)
-    revalidatePath("/connections")
-    revalidatePath("/dashboard")
+    revalidateStravaViews()
     return { synced: imported }
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Synchronisation échouée" }
@@ -38,8 +43,7 @@ export async function syncStravaHistory(
 
   try {
     const { imported } = await importStravaHistory(user.id, days)
-    revalidatePath("/connections")
-    revalidatePath("/dashboard")
+    revalidateStravaViews()
     return { synced: imported }
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Import historique échoué" }
@@ -56,8 +60,7 @@ export async function syncAllStravaHistory(): Promise<{ synced?: number; error?:
 
   try {
     const { imported } = await importAllStravaHistory(user.id)
-    revalidatePath("/connections")
-    revalidatePath("/dashboard")
+    revalidateStravaViews()
     return { synced: imported }
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Import complet échoué" }
@@ -119,6 +122,7 @@ export async function disconnectStrava(): Promise<{ success?: boolean; error?: s
   if (error) return { error: error.message }
 
   revalidatePath("/connections")
+  revalidatePath("/progression")
   return { success: true }
 }
 

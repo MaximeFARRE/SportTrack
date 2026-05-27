@@ -209,7 +209,7 @@ export default async function HealthPage() {
       {/* Main recovery metrics grid */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {/* Sommeil */}
-        <Card className="relative border border-border bg-card/50 backdrop-blur-sm transition-all hover:bg-card">
+        <Card className="relative overflow-visible border border-border bg-card/50 backdrop-blur-sm transition-all hover:z-20 hover:bg-card">
           <CardContent className="pt-4 flex flex-col justify-between h-full min-h-[110px]">
             <div className="flex items-center justify-between text-sm text-muted-foreground">
               <span className="flex items-center gap-1.5 font-medium">
@@ -231,7 +231,7 @@ export default async function HealthPage() {
         </Card>
 
         {/* HRV */}
-        <Card className="relative border border-border bg-card/50 backdrop-blur-sm transition-all hover:bg-card">
+        <Card className="relative overflow-visible border border-border bg-card/50 backdrop-blur-sm transition-all hover:z-20 hover:bg-card">
           <CardContent className="pt-4 flex flex-col justify-between h-full min-h-[110px]">
             <div className="flex items-center justify-between text-sm text-muted-foreground">
               <span className="flex items-center gap-1.5 font-medium">
@@ -259,7 +259,7 @@ export default async function HealthPage() {
         </Card>
 
         {/* FC de repos */}
-        <Card className="relative border border-border bg-card/50 backdrop-blur-sm transition-all hover:bg-card">
+        <Card className="relative overflow-visible border border-border bg-card/50 backdrop-blur-sm transition-all hover:z-20 hover:bg-card">
           <CardContent className="pt-4 flex flex-col justify-between h-full min-h-[110px]">
             <div className="flex items-center justify-between text-sm text-muted-foreground">
               <span className="flex items-center gap-1.5 font-medium">
@@ -281,7 +281,7 @@ export default async function HealthPage() {
         </Card>
 
         {/* Body Battery & Stress */}
-        <Card className="relative border border-border bg-card/50 backdrop-blur-sm transition-all hover:bg-card">
+        <Card className="relative overflow-visible border border-border bg-card/50 backdrop-blur-sm transition-all hover:z-20 hover:bg-card">
           <CardContent className="pt-4 flex flex-col justify-between h-full min-h-[110px]">
             <div className="flex items-center justify-between text-sm text-muted-foreground">
               <span className="flex items-center gap-1.5 font-medium">
@@ -304,7 +304,7 @@ export default async function HealthPage() {
       </div>
 
       {/* Secondary metrics summary */}
-      <Card className="border border-border bg-card/30 backdrop-blur-sm">
+      <Card className="relative overflow-visible border border-border bg-card/30 backdrop-blur-sm">
         <CardHeader className="py-2.5 px-4 border-b border-border/40">
           <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
             <TrendingUp className="h-3.5 w-3.5" />
@@ -354,7 +354,7 @@ export default async function HealthPage() {
 
         {/* Load Context Card (1/3 width on desktop) */}
         <div>
-          <Card className="h-full">
+          <Card className="relative h-full overflow-visible">
             <CardHeader className="pb-2 border-b border-border/40">
               <CardTitle className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
                 Contexte charge

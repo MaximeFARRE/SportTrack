@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual } from "crypto"
+import { revalidatePath } from "next/cache"
 import { NextRequest, NextResponse } from "next/server"
 
 function getStateSecret() {
@@ -58,6 +59,9 @@ export async function GET(request: NextRequest) {
     await syncRecentStrava(user_id, { perPage: 30, maxPages: 2 }).catch((syncError) => {
       console.error("initial strava sync failed", syncError)
     })
+    revalidatePath("/connections")
+    revalidatePath("/dashboard")
+    revalidatePath("/progression")
   } catch (e) {
     console.error("strava callback failed", e)
     return NextResponse.redirect(`${baseUrl}/connections?strava=error`)

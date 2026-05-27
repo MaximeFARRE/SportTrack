@@ -10,6 +10,8 @@ const PUBLIC_PATHS = [
   "/forgot-password",
   "/reset-password",
   "/auth/callback",
+  "/api/cron/garmin",
+  "/api/cron/polar",
   "/api/cron/daily-injury",
   "/api/cron/daily-risk",
   "/api/strava/callback",
