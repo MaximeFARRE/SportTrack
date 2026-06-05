@@ -15,6 +15,7 @@ import { VmaEstimateCard } from "@/components/progression/vma-estimate-card"
 import { computeEffortProgression } from "@/lib/compute/effort-progression"
 import { estimateVma } from "@/lib/compute/vma-estimate"
 import { ensureValidStravaToken } from "@/lib/server/strava/tokens"
+import { getVmaStreamEfforts } from "@/lib/server/strava/vma"
 
 import { ProgressionAutoRefresh } from "./progression-auto-refresh"
 
@@ -40,7 +41,7 @@ export default async function ProgressionPage() {
   const [activitiesRes, zonesRes, prActivitiesRes] = await Promise.all([
     supabase
       .from("activities")
-      .select("sport_type, start_date, duration_sec, moving_time_sec, distance_m, elevation_gain_m, average_heartrate, time_in_zones_json")
+      .select("provider, provider_activity_id, sport_type, start_date, duration_sec, moving_time_sec, distance_m, elevation_gain_m, average_heartrate, max_heartrate, time_in_zones_json")
       .eq("user_id", user.id)
       .gte("start_date", sixMonthsAgo.toISOString())
       .order("start_date"),
@@ -64,7 +65,7 @@ export default async function ProgressionPage() {
     (zones as any) ?? [],
     now,
   )
-  const vmaEstimate = estimateVma((activities as any) ?? [], (zones as any) ?? [], now)
+  let vmaStreamEfforts: any[] = []
 
   let koms: any[] = []
   let isStravaConnected = false
@@ -72,6 +73,7 @@ export default async function ProgressionPage() {
   try {
     const token = await ensureValidStravaToken(user.id)
     isStravaConnected = true
+    vmaStreamEfforts = await getVmaStreamEfforts(token, (activities as any) ?? [])
 
     const { data: conn } = await supabase
       .from("provider_connections")
@@ -92,6 +94,8 @@ export default async function ProgressionPage() {
   } catch (error) {
     console.warn("Strava token or KOMs retrieval failed:", error)
   }
+
+  const vmaEstimate = estimateVma((activities as any) ?? [], (zones as any) ?? [], now, vmaStreamEfforts)
 
   // Build weekly buckets
   const weeks: Array<{
