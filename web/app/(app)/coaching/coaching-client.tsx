@@ -18,7 +18,7 @@ import {
 import { toast } from "sonner"
 
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import {
   Card,
   CardContent,
@@ -199,10 +199,15 @@ export function CoachingClient({ initialGroups }: CoachingClientProps) {
                   <span className="text-xs text-muted-foreground font-mono">
                     Code : <span className="font-semibold text-foreground select-all">{group.invite_code}</span>
                   </span>
-                  <Link href={`/coaching/${group.id}`} passHref>
-                    <Button size="sm" className="gap-1.5 bg-gradient-to-r from-primary to-violet-600 hover:from-primary/95 hover:to-violet-600/95 text-white">
-                      Accéder <ArrowRight className="h-3.5 w-3.5" />
-                    </Button>
+                  <Link
+                    href={`/coaching/${group.id}`}
+                    className={buttonVariants({
+                      size: "sm",
+                      className:
+                        "gap-1.5 bg-gradient-to-r from-primary to-violet-600 hover:from-primary/95 hover:to-violet-600/95 text-white",
+                    })}
+                  >
+                    Accéder <ArrowRight className="h-3.5 w-3.5" />
                   </Link>
                 </CardFooter>
               </Card>
