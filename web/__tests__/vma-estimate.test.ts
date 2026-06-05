@@ -62,6 +62,16 @@ describe("estimateVma", () => {
     expect(result.confidence).toBe("low")
   })
 
+  it("does not use easy whole-activity runs as VMA candidates", () => {
+    const result = estimateVma(
+      [activity({ duration_sec: 3600, moving_time_sec: 3600, distance_m: 10000, average_heartrate: 132, max_heartrate: 145 })],
+      zones,
+      new Date("2026-06-01T00:00:00.000Z"),
+    )
+
+    expect(result.valueKmh).toBeNull()
+  })
+
   it("weights short stream efforts into the estimate", () => {
     const efforts = bestStreamEfforts(
       {
