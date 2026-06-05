@@ -22,7 +22,24 @@ export type VmaEstimate = {
   tooltip: string
 }
 
-type Candidate = { valueKmh: number; score: number }
+export type VmaStreamEffort = {
+  durationSec: number
+  speedKmh: number
+  averageHeartrate: number | null
+  elevationGainM: number
+  date: string
+}
+
+export type VmaStream = {
+  time: number[]
+  distance: number[]
+  velocity?: number[]
+  heartrate?: number[]
+  altitude?: number[]
+  date: string
+}
+
+type Candidate = { valueKmh: number; score: number; source: "activity" | "stream" }
 
 function isClassicRun(sportType: string): boolean {
   const normalized = sportType.trim().toLowerCase()
@@ -38,6 +55,14 @@ function durationFractionOfVma(minutes: number): number {
   if (minutes <= 30) return 0.88
   if (minutes <= 45) return 0.84
   return 0.8
+}
+
+function shortEffortFractionOfVma(seconds: number): number {
+  if (seconds <= 180) return 1.05
+  if (seconds <= 240) return 1.03
+  if (seconds <= 300) return 1.01
+  if (seconds <= 360) return 1
+  return 0.97
 }
 
 function zoneNumberForHr(bpm: number | null, zones: VmaZone[]): number {
@@ -67,19 +92,63 @@ function weightedAverage(candidates: Candidate[]): number | null {
   return filtered.reduce((sum, candidate) => sum + candidate.valueKmh * candidate.score, 0) / scoreSum
 }
 
+function streamCandidates(efforts: VmaStreamEffort[], zones: VmaZone[], now: Date): Candidate[] {
+  const sortedZones = [...zones].sort((a, b) => a.zone_number - b.zone_number)
+  return efforts.flatMap((effort): Candidate[] => {
+    const valueKmh = effort.speedKmh / shortEffortFractionOfVma(effort.durationSec)
+    const elevationPerKm = effort.elevationGainM / Math.max(0.1, effort.speedKmh * (effort.durationSec / 3600))
+    if (!Number.isFinite(valueKmh) || valueKmh < 8 || valueKmh > 28 || elevationPerKm > 35) return []
+
+    const hrZone = zoneNumberForHr(effort.averageHeartrate, sortedZones)
+    const durationScore = effort.durationSec >= 300 && effort.durationSec <= 360 ? 1 : 0.88
+    const intensityScore = hrZone >= 5 ? 1 : hrZone >= 4 ? 0.84 : hrZone >= 3 ? 0.68 : 0.55
+    const score = 1.35 * durationScore * intensityScore * recencyScore(new Date(effort.date), now)
+    return [{ valueKmh, score, source: "stream" }]
+  })
+}
+
 export function paceFromKmh(kmh: number | null): string {
   if (kmh == null || kmh <= 0) return "—"
   const sec = Math.round(3600 / kmh)
   return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")}/km`
 }
 
+export function bestStreamEfforts(stream: VmaStream, windowsSec: number[] = [180, 240, 300, 360, 480]): VmaStreamEffort[] {
+  const efforts: VmaStreamEffort[] = []
+  for (const windowSec of windowsSec) {
+    let best: VmaStreamEffort | null = null
+    let end = 0
+    for (let start = 0; start < stream.time.length; start++) {
+      while (end < stream.time.length && stream.time[end] - stream.time[start] < windowSec) end += 1
+      if (end >= stream.time.length) break
+
+      const elapsed = stream.time[end] - stream.time[start]
+      const distanceM = stream.distance[end] - stream.distance[start]
+      const speedKmh = (distanceM / elapsed) * 3.6
+      const averageHeartrate = stream.heartrate ? median(stream.heartrate.slice(start, end + 1)) : null
+      const altitudeSlice = stream.altitude?.slice(start, end + 1) ?? []
+      const elevationGainM = altitudeSlice.reduce((sum, altitude, index) => {
+        if (index === 0) return sum
+        return sum + Math.max(0, altitude - altitudeSlice[index - 1])
+      }, 0)
+
+      if (distanceM >= 400 && Number.isFinite(speedKmh) && (!best || speedKmh > best.speedKmh)) {
+        best = { durationSec: elapsed, speedKmh, averageHeartrate, elevationGainM, date: stream.date }
+      }
+    }
+    if (best) efforts.push(best)
+  }
+  return efforts
+}
+
 export function estimateVma(
   activities: VmaActivity[],
   zones: VmaZone[],
   now: Date = new Date(),
+  streamEfforts: VmaStreamEffort[] = [],
 ): VmaEstimate {
   const sortedZones = [...zones].sort((a, b) => a.zone_number - b.zone_number)
-  const candidates = activities.flatMap((activity): Candidate[] => {
+  const activityCandidates = activities.flatMap((activity): Candidate[] => {
     const date = new Date(activity.start_date)
     const durationSec = activity.moving_time_sec && activity.moving_time_sec > 0 ? activity.moving_time_sec : activity.duration_sec ?? 0
     const distanceKm = (activity.distance_m ?? 0) / 1000
@@ -97,16 +166,18 @@ export function estimateVma(
     const intensityScore = maxZone >= 5 ? 1 : maxZone >= 4 || avgZone >= 4 ? 0.82 : avgZone >= 3 ? 0.62 : 0.42
     const elevationScore = elevationPerKm <= 12 ? 1 : elevationPerKm <= 25 ? 0.78 : 0.55
     const score = durationScore * intensityScore * elevationScore * recencyScore(date, now)
-    return score >= 0.22 ? [{ valueKmh, score }] : []
+    return score >= 0.22 ? [{ valueKmh, score, source: "activity" }] : []
   })
+  const candidates = [...streamCandidates(streamEfforts, sortedZones, now), ...activityCandidates]
 
   const value = weightedAverage(candidates)
   const rounded = value == null ? null : Math.round(value * 10) / 10
-  const confidence = candidates.length >= 5 ? "good" : candidates.length >= 3 ? "medium" : "low"
+  const streamCount = candidates.filter((candidate) => candidate.source === "stream").length
+  const confidence = streamCount >= 3 || candidates.length >= 6 ? "good" : streamCount >= 2 || candidates.length >= 3 ? "medium" : "low"
   const tooltip =
     rounded == null
       ? "VMA indisponible: pas assez de sorties course route exploitables."
-      : `Estimation V1 basée sur ${candidates.length} sortie${candidates.length > 1 ? "s" : ""} course route récente${candidates.length > 1 ? "s" : ""}. Les trails, sorties très vallonnées et données improbables sont ignorés. Allure à 100%: ${paceFromKmh(rounded)}.`
+      : `Estimation V2 basée sur ${candidates.length} signal${candidates.length > 1 ? "aux" : ""}${streamCount > 0 ? `, dont ${streamCount} meilleur${streamCount > 1 ? "s" : ""} effort${streamCount > 1 ? "s" : ""} Strava` : ""}. Les trails, sorties très vallonnées et données improbables sont ignorés. Allure à 100%: ${paceFromKmh(rounded)}.`
 
   return { valueKmh: rounded, confidence, candidateCount: candidates.length, tooltip }
 }

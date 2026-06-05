@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { estimateVma, paceFromKmh, type VmaActivity, type VmaZone } from "@/lib/compute/vma-estimate"
+import { bestStreamEfforts, estimateVma, paceFromKmh, type VmaActivity, type VmaZone } from "@/lib/compute/vma-estimate"
 
 const zones: VmaZone[] = [
   { zone_number: 1, hr_min: 90, hr_max: 120 },
@@ -60,6 +60,24 @@ describe("estimateVma", () => {
 
     expect(result.valueKmh).not.toBeNull()
     expect(result.confidence).toBe("low")
+  })
+
+  it("weights short stream efforts into the estimate", () => {
+    const efforts = bestStreamEfforts(
+      {
+        date: "2026-05-20T08:00:00.000Z",
+        time: Array.from({ length: 601 }, (_, i) => i),
+        distance: Array.from({ length: 601 }, (_, i) => i * 4.5),
+        heartrate: Array.from({ length: 601 }, () => 182),
+        altitude: Array.from({ length: 601 }, () => 20),
+      },
+      [300, 360],
+    )
+    const result = estimateVma([], zones, new Date("2026-06-01T00:00:00.000Z"), efforts)
+
+    expect(efforts).toHaveLength(2)
+    expect(result.valueKmh).toBeGreaterThan(15)
+    expect(result.confidence).toBe("medium")
   })
 })
 
