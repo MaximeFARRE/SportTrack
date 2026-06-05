@@ -1,5 +1,5 @@
 import type { Metadata } from "next"
-import { startOfWeek, subWeeks, format } from "date-fns"
+import { startOfWeek, subMonths, subWeeks, format } from "date-fns"
 import { fr } from "date-fns/locale"
 import { LineChart } from "lucide-react"
 
@@ -10,6 +10,8 @@ import type { ZoneEntry } from "@/components/activity/zone-bars"
 import { WeeklyVolume } from "@/components/progression/weekly-volume"
 import { UserPRs } from "@/components/progression/user-prs"
 import { StravaAchievements } from "@/components/progression/strava-achievements"
+import { EffortProgressionCard } from "@/components/progression/effort-progression-card"
+import { computeEffortProgression } from "@/lib/compute/effort-progression"
 import { ensureValidStravaToken } from "@/lib/server/strava/tokens"
 
 import { ProgressionAutoRefresh } from "./progression-auto-refresh"
@@ -31,15 +33,20 @@ export default async function ProgressionPage() {
   if (!user) return null
 
   const now = new Date()
-  const twelveWeeksAgo = subWeeks(startOfWeek(now, { weekStartsOn: 1 }), 11)
+  const sixMonthsAgo = subMonths(now, 6)
 
-  const [activitiesRes, prActivitiesRes] = await Promise.all([
+  const [activitiesRes, zonesRes, prActivitiesRes] = await Promise.all([
     supabase
       .from("activities")
-      .select("sport_type, start_date, duration_sec, distance_m, time_in_zones_json")
+      .select("sport_type, start_date, duration_sec, moving_time_sec, distance_m, elevation_gain_m, average_heartrate, time_in_zones_json")
       .eq("user_id", user.id)
-      .gte("start_date", twelveWeeksAgo.toISOString())
+      .gte("start_date", sixMonthsAgo.toISOString())
       .order("start_date"),
+    supabase
+      .from("hr_zones")
+      .select("zone_number, zone_name, hr_min, hr_max, color_hex")
+      .eq("user_id", user.id)
+      .order("zone_number"),
     supabase
       .from("activities")
       .select("id, name, sport_type, start_date, duration_sec, distance_m, elevation_gain_m, raw_data_json")
@@ -48,7 +55,13 @@ export default async function ProgressionPage() {
   ])
 
   const activities = activitiesRes.data
+  const zones = zonesRes.data
   const prActivities = prActivitiesRes.data
+  const effortProgression = computeEffortProgression(
+    (activities as any) ?? [],
+    (zones as any) ?? [],
+    now,
+  )
 
   let koms: any[] = []
   let isStravaConnected = false
@@ -139,6 +152,8 @@ export default async function ProgressionPage() {
         <LineChart className="h-5 w-5 text-primary" />
         <h1 className="text-xl font-semibold">Progression</h1>
       </div>
+
+      <EffortProgressionCard progression={effortProgression} />
 
       {/* Current week zones + polarization */}
       <Card>
