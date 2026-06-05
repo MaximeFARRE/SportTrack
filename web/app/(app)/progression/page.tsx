@@ -17,6 +17,7 @@ import { estimateVma } from "@/lib/compute/vma-estimate"
 import { ensureValidStravaToken } from "@/lib/server/strava/tokens"
 import { getVmaStreamEfforts } from "@/lib/server/strava/vma"
 
+import { HistoryRefreshButton } from "./history-refresh-button"
 import { ProgressionAutoRefresh } from "./progression-auto-refresh"
 
 export const metadata: Metadata = { title: "Progression · SportTrack" }
@@ -155,9 +156,12 @@ export default async function ProgressionPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <ProgressionAutoRefresh />
-      <div className="flex items-center gap-2">
-        <LineChart className="h-5 w-5 text-primary" />
-        <h1 className="text-xl font-semibold">Progression</h1>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-2">
+          <LineChart className="h-5 w-5 text-primary" />
+          <h1 className="text-xl font-semibold">Progression</h1>
+        </div>
+        <HistoryRefreshButton />
       </div>
 
       <VmaEstimateCard estimate={vmaEstimate} />

@@ -163,6 +163,10 @@ export function estimateVma(
 
     const maxZone = zoneNumberForHr(activity.max_heartrate, sortedZones)
     const avgZone = zoneNumberForHr(activity.average_heartrate, sortedZones)
+    const hasHeartRate = activity.max_heartrate != null || activity.average_heartrate != null
+    const looksHard = maxZone >= 4 || avgZone >= 3 || (!hasHeartRate && minutes <= 35)
+    if (!looksHard) return []
+
     const durationScore = minutes >= 4 && minutes <= 12 ? 1 : minutes <= 30 ? 0.78 : 0.55
     const intensityScore = maxZone >= 5 ? 1 : maxZone >= 4 || avgZone >= 4 ? 0.82 : avgZone >= 3 ? 0.62 : 0.42
     const elevationScore = elevationPerKm <= 12 ? 1 : elevationPerKm <= 25 ? 0.78 : 0.55

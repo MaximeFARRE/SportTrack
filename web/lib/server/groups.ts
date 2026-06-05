@@ -13,6 +13,8 @@ export type GroupMemberWithProfile = {
   } | null
 }
 
+export type GroupMember = Omit<GroupMemberWithProfile, "profiles">
+
 export type Group = {
   id: string
   name: string
@@ -34,6 +36,25 @@ export async function getGroupById(supabase: SupabaseClient, groupId: string): P
 
   if (error) {
     console.error("Error fetching group:", error)
+    return null
+  }
+  return data
+}
+
+export async function getGroupMember(
+  supabase: SupabaseClient,
+  groupId: string,
+  userId: string
+): Promise<GroupMember | null> {
+  const { data, error } = await supabase
+    .from("group_members")
+    .select("group_id, user_id, role, target_time_sec, created_at")
+    .eq("group_id", groupId)
+    .eq("user_id", userId)
+    .maybeSingle()
+
+  if (error) {
+    console.error("Error fetching group member:", error)
     return null
   }
   return data

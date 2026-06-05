@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server"
 import {
   getGroupActivities,
   getGroupById,
+  getGroupMember,
   getGroupMembers,
   getGroupPlannedSessions,
   getGroupTrainingBlocks,
@@ -41,16 +42,16 @@ export default async function GroupPage({
   const group = await getGroupById(supabase, groupId)
   if (!group) notFound()
 
-  // 2. Charger les membres et vérifier l'appartenance
-  const members = await getGroupMembers(supabase, groupId)
-  const currentMember = members.find((m) => m.user_id === user.id)
+  // 2. Vérifier l'appartenance avec une requête dédiée au membre courant
+  const currentMember = await getGroupMember(supabase, groupId, user.id)
   if (!currentMember) {
     // Si l'utilisateur n'est pas membre, retour à l'accueil coaching
     redirect("/coaching")
   }
 
   // 3. Charger le reste des données du groupe
-  const [activities, groupSessions, groupBlocks] = await Promise.all([
+  const [members, activities, groupSessions, groupBlocks] = await Promise.all([
+    getGroupMembers(supabase, groupId),
     getGroupActivities(supabase, groupId),
     getGroupPlannedSessions(supabase, groupId),
     getGroupTrainingBlocks(supabase, groupId),
