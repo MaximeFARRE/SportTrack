@@ -1,5 +1,5 @@
 import type { Metadata } from "next"
-import { startOfWeek, subMonths, subWeeks, format } from "date-fns"
+import { startOfWeek, subYears, subWeeks, format } from "date-fns"
 import { fr } from "date-fns/locale"
 import { LineChart } from "lucide-react"
 
@@ -36,14 +36,14 @@ export default async function ProgressionPage() {
   if (!user) return null
 
   const now = new Date()
-  const sixMonthsAgo = subMonths(now, 6)
+  const vmaHistoryStart = subYears(now, 4)
 
   const [activitiesRes, zonesRes, prActivitiesRes] = await Promise.all([
     supabase
       .from("activities")
-      .select("provider, provider_activity_id, sport_type, start_date, duration_sec, moving_time_sec, distance_m, elevation_gain_m, average_heartrate, max_heartrate, time_in_zones_json")
+      .select("provider, provider_activity_id, sport_type, start_date, duration_sec, moving_time_sec, distance_m, elevation_gain_m, average_heartrate, max_heartrate, max_speed, time_in_zones_json")
       .eq("user_id", user.id)
-      .gte("start_date", sixMonthsAgo.toISOString())
+      .gte("start_date", vmaHistoryStart.toISOString())
       .order("start_date"),
     supabase
       .from("hr_zones")

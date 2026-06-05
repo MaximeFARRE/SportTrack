@@ -7,6 +7,7 @@ export type VmaActivity = {
   elevation_gain_m: number | null
   average_heartrate: number | null
   max_heartrate: number | null
+  max_speed?: number | null
 }
 
 export type VmaZone = {
