@@ -11,7 +11,9 @@ import { WeeklyVolume } from "@/components/progression/weekly-volume"
 import { UserPRs } from "@/components/progression/user-prs"
 import { StravaAchievements } from "@/components/progression/strava-achievements"
 import { EffortProgressionCard } from "@/components/progression/effort-progression-card"
+import { VmaEstimateCard } from "@/components/progression/vma-estimate-card"
 import { computeEffortProgression } from "@/lib/compute/effort-progression"
+import { estimateVma } from "@/lib/compute/vma-estimate"
 import { ensureValidStravaToken } from "@/lib/server/strava/tokens"
 
 import { ProgressionAutoRefresh } from "./progression-auto-refresh"
@@ -62,6 +64,7 @@ export default async function ProgressionPage() {
     (zones as any) ?? [],
     now,
   )
+  const vmaEstimate = estimateVma((activities as any) ?? [], (zones as any) ?? [], now)
 
   let koms: any[] = []
   let isStravaConnected = false
@@ -152,6 +155,8 @@ export default async function ProgressionPage() {
         <LineChart className="h-5 w-5 text-primary" />
         <h1 className="text-xl font-semibold">Progression</h1>
       </div>
+
+      <VmaEstimateCard estimate={vmaEstimate} />
 
       <EffortProgressionCard progression={effortProgression} />
 
