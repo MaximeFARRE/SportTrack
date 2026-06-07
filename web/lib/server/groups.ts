@@ -15,6 +15,8 @@ export type GroupMemberWithProfile = {
 
 export type GroupMember = Omit<GroupMemberWithProfile, "profiles">
 
+type Profile = GroupMemberWithProfile["profiles"]
+
 export type Group = {
   id: string
   name: string
@@ -63,25 +65,21 @@ export async function getGroupMember(
 export async function getGroupMembers(supabase: SupabaseClient, groupId: string): Promise<GroupMemberWithProfile[]> {
   const { data, error } = await supabase
     .from("group_members")
-    .select(`
-      group_id,
-      user_id,
-      role,
-      target_time_sec,
-      created_at,
-      profiles (
-        display_name,
-        avatar_url,
-        email
-      )
-    `)
+    .select("group_id, user_id, role, target_time_sec, created_at")
     .eq("group_id", groupId)
 
   if (error) {
     console.error("Error fetching group members:", error)
     return []
   }
-  return (data as any) || []
+
+  const members = (data as GroupMember[]) || []
+  const profiles = await getProfilesByUserId(supabase, members.map((member) => member.user_id))
+
+  return members.map((member) => ({
+    ...member,
+    profiles: profiles.get(member.user_id) ?? null,
+  }))
 }
 
 export async function getUserGroups(supabase: SupabaseClient, userId: string): Promise<Group[]> {
@@ -123,7 +121,7 @@ export async function getGroupActivities(
 
   const { data: activities, error: activitiesError } = await supabase
     .from("activities")
-    .select("*, profiles:user_id(display_name, avatar_url)")
+    .select("*")
     .in("user_id", userIds)
     .gte("start_date", cutoff.toISOString())
     .order("start_date", { ascending: false })
@@ -133,7 +131,38 @@ export async function getGroupActivities(
     return []
   }
 
-  return activities || []
+  const profiles = await getProfilesByUserId(supabase, userIds)
+
+  return (activities || []).map((activity: any) => ({
+    ...activity,
+    profiles: profiles.get(activity.user_id) ?? null,
+  }))
+}
+
+async function getProfilesByUserId(supabase: SupabaseClient, userIds: string[]): Promise<Map<string, Profile>> {
+  const uniqueUserIds = [...new Set(userIds)]
+  if (uniqueUserIds.length === 0) return new Map()
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, display_name, avatar_url, email")
+    .in("id", uniqueUserIds)
+
+  if (error) {
+    console.error("Error fetching group profiles:", error)
+    return new Map()
+  }
+
+  return new Map(
+    (data || []).map((profile: any) => [
+      profile.id,
+      {
+        display_name: profile.display_name,
+        avatar_url: profile.avatar_url,
+        email: profile.email,
+      },
+    ])
+  )
 }
 
 export async function getGroupPlannedSessions(supabase: SupabaseClient, groupId: string): Promise<any[]> {
